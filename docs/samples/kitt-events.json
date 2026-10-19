@@ -1,0 +1,17 @@
+{
+  "format": "blackbox-events",
+  "version": 1,
+  "app": "KITT",
+  "appVersion": "2.3.1",
+  "device": "Pixel Fold (synthetic sample)",
+  "session": "sample-drive",
+  "timezone": "America/Chicago",
+  "events": [
+    {"t": "2026-10-18T21:00:00Z", "level": "info", "type": "obd.connect", "message": "ELM327 connected over Bluetooth"},
+    {"t": "2026-10-18T21:00:05Z", "level": "debug", "type": "obd.poll", "data": {"pid": "010C", "rpm": 812}},
+    {"t": "2026-10-18T21:00:30Z", "level": "info", "type": "screen.off", "mark": true},
+    {"t": "2026-10-18T21:01:00Z", "level": "error", "type": "obd.write", "message": "java.io.IOException: Broken pipe", "data": {"bytes": 0}},
+    {"t": "2026-10-18T21:01:30Z", "level": "info", "type": "screen.on"},
+    {"t": "2026-10-18T16:02:00", "level": "warn", "type": "obd.reconnect", "message": "Reconnect attempt 1 (local time, resolved via timezone)"}
+  ]
+}

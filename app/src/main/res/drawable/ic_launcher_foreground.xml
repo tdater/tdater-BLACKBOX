@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A flight recorder: carbon box with hazard edge and a heartbeat trace, on international orange. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FF111218"
+        android:pathData="M36,36 L72,36 Q76,36 76,40 L76,68 Q76,72 72,72 L36,72 Q32,72 32,68 L32,40 Q32,36 36,36 Z" />
+    <path android:fillColor="#FFFF6B1A" android:pathData="M32,64 L40,64 L36,72 L32,72 Z M46,64 L54,64 L50,72 L42,72 Z M60,64 L68,64 L64,72 L56,72 Z M74,64 L76,64 L76,68 Q76,72 72,72 L70,72 Z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="3"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M37,52 L46,52 L50,42 L55,60 L59,48 L71,48" />
+</vector>
