@@ -77,9 +77,10 @@ class SmokeFlowTest {
         rule.onNodeWithContentDescription("Project actions").performClick()
         waitText("Regression checklist")
         rule.onNodeWithText("Regression checklist").performClick()
-        waitText("Suggested from fixed failures")
+        // SectionHeader renders upper case.
+        waitText("Suggested from fixed failures", ignoreCase = true)
         rule.onNodeWithText("Add to checklist").performClick()
-        waitText("Checks (", substring = true)
+        waitText("Checks (", substring = true, ignoreCase = true)
         shot("07-regression")
     }
 
@@ -98,8 +99,8 @@ class SmokeFlowTest {
         rule.waitForIdle()
     }
 
-    private fun waitText(text: String, substring: Boolean = false) =
-        waitFor("text \"$text\"") { rule.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
+    private fun waitText(text: String, substring: Boolean = false, ignoreCase: Boolean = false) =
+        waitFor("text \"$text\"") { rule.onAllNodes(hasText(text, substring, ignoreCase)).fetchSemanticsNodes().isNotEmpty() }
 
     private fun waitDesc(desc: String) =
         waitFor("content description \"$desc\"") { rule.onAllNodesWithContentDescription(desc).fetchSemanticsNodes().isNotEmpty() }
