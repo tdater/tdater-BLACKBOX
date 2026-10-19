@@ -11,6 +11,9 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.Update
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteOpenHelper
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -124,6 +127,20 @@ interface BlackboxDao {
     fun observeHandoffs(pid: String): Flow<List<HandoffEntity>>
     @Query("SELECT * FROM handoff_draft WHERE projectId = :pid") suspend fun handoffs(pid: String): List<HandoffEntity>
     @Upsert suspend fun upsertHandoff(h: HandoffEntity)
+
+    // Follow-up reminders
+    @Query("SELECT * FROM investigation WHERE followUpAt IS NOT NULL ORDER BY followUpAt ASC")
+    fun observeFollowUps(): Flow<List<InvestigationEntity>>
+    @Query("SELECT * FROM investigation WHERE followUpAt IS NOT NULL")
+    suspend fun followUps(): List<InvestigationEntity>
+
+    // Saved procedures (checklists)
+    @Query("SELECT * FROM saved_procedure ORDER BY updatedAt DESC")
+    fun observeProcedures(): Flow<List<ProcedureEntity>>
+    @Query("SELECT * FROM saved_procedure") suspend fun procedures(): List<ProcedureEntity>
+    @Query("SELECT * FROM saved_procedure WHERE id = :id") suspend fun procedure(id: String): ProcedureEntity?
+    @Upsert suspend fun upsertProcedure(p: ProcedureEntity)
+    @Query("DELETE FROM saved_procedure WHERE id = :id") suspend fun deleteProcedure(id: String)
 }
 
 @Database(
@@ -131,8 +148,9 @@ interface BlackboxDao {
         ProjectEntity::class, InvestigationEntity::class, SessionEntity::class, BuildEntity::class,
         EnvSnapshotEntity::class, EnvFieldEntity::class, EvidenceEntity::class, ClaimEntity::class,
         PlanEntity::class, RunEntity::class, TimelineEntity::class, CapsuleEntity::class, HandoffEntity::class,
+        ProcedureEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -140,8 +158,30 @@ abstract class BlackboxDatabase : RoomDatabase() {
     abstract fun dao(): BlackboxDao
 
     companion object {
-        /** Add explicit Migration objects here for every schema bump; destructive migration is not allowed. */
-        fun build(context: Context): BlackboxDatabase =
-            Room.databaseBuilder(context, BlackboxDatabase::class.java, "blackbox.db").build()
+        const val NAME = "blackbox.db"
+
+        /** v2: project templates and condition fields, investigation follow-ups, saved procedures. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE project ADD COLUMN templateId TEXT NOT NULL DEFAULT 'custom'")
+                db.execSQL("ALTER TABLE project ADD COLUMN fieldKeys TEXT NOT NULL DEFAULT '[]'")
+                db.execSQL("ALTER TABLE investigation ADD COLUMN followUpAt INTEGER")
+                db.execSQL("ALTER TABLE investigation ADD COLUMN followUpNote TEXT NOT NULL DEFAULT ''")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `saved_procedure` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, " +
+                        "`steps` TEXT NOT NULL, `expectedResult` TEXT NOT NULL, `templateId` TEXT NOT NULL, `sourceProjectId` TEXT, " +
+                        "`sourcePlanId` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+                )
+            }
+        }
+
+        val MIGRATIONS = arrayOf(MIGRATION_1_2)
+
+        /** Every schema bump gets an explicit Migration in [MIGRATIONS]; destructive migration is not allowed. */
+        fun build(context: Context, factory: SupportSQLiteOpenHelper.Factory? = null): BlackboxDatabase =
+            Room.databaseBuilder(context, BlackboxDatabase::class.java, NAME)
+                .addMigrations(*MIGRATIONS)
+                .apply { if (factory != null) openHelperFactory(factory) }
+                .build()
     }
 }

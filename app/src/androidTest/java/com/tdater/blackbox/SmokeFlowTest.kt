@@ -75,8 +75,9 @@ class SmokeFlowTest {
         // The project menu only appears once the project bundle has loaded.
         waitDesc("Project actions")
         rule.onNodeWithContentDescription("Project actions").performClick()
-        waitText("Regression checklist")
-        rule.onNodeWithText("Regression checklist").performClick()
+        // Everyday wording is the default: "Regression checklist" reads as "Recheck list".
+        waitText("Recheck list")
+        rule.onNodeWithText("Recheck list").performClick()
         // SectionHeader renders upper case.
         waitText("Suggested from fixed failures", ignoreCase = true)
         rule.onNodeWithText("Add to checklist").performClick()

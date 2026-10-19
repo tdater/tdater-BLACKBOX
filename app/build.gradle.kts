@@ -86,6 +86,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material3.adaptive:adaptive:1.0.0")
     implementation("androidx.window:window:1.3.0")
+    implementation("androidx.documentfile:documentfile:1.0.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // On-device LLM runtime. Runs locally; the app still has no INTERNET permission.

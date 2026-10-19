@@ -33,6 +33,7 @@ import com.tdater.blackbox.core.model.Measurement
 import com.tdater.blackbox.core.model.ProjectBundle
 import com.tdater.blackbox.core.model.RunOutcome
 import com.tdater.blackbox.core.model.TestRun
+import com.tdater.blackbox.core.procedures.ProcedureLibrary
 import com.tdater.blackbox.ui.MainViewModel
 import com.tdater.blackbox.ui.components.BbTopBar
 import com.tdater.blackbox.ui.components.ConfirmDialog
@@ -74,7 +75,7 @@ fun RunScreen(vm: MainViewModel, pid: String, runId: String, back: () -> Unit,
     }) { pad ->
         if (b == null) return@Scaffold
         if (run == null) { Column(Modifier.padding(pad)) { Missing("Run") }; return@Scaffold }
-        val reference: @Composable ColumnScope.() -> Unit = { RunReference(b, run, openEvidence) }
+        val reference: @Composable ColumnScope.() -> Unit = { RunReference(vm, b, run, openEvidence) }
         val controls: @Composable ColumnScope.() -> Unit = { RunControls(vm, b, run, capture) }
         when {
             layout.tabletop -> Column(Modifier.padding(pad).fillMaxSize()) {
@@ -95,7 +96,7 @@ fun RunScreen(vm: MainViewModel, pid: String, runId: String, back: () -> Unit,
 }
 
 @Composable
-private fun ColumnScope.RunReference(b: ProjectBundle, run: TestRun, openEvidence: (String) -> Unit) {
+private fun ColumnScope.RunReference(vm: MainViewModel, b: ProjectBundle, run: TestRun, openEvidence: (String) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Tag(outcomeLabel(run.outcome), outcomeTone(run.outcome))
         Text("started ${fmtTime(run.startedAt)}" + (run.endedAt?.let { " · ended ${fmtTime(it)}" } ?: ""),
@@ -105,7 +106,16 @@ private fun ColumnScope.RunReference(b: ProjectBundle, run: TestRun, openEvidenc
     Text(run.planSnapshot.expectedResult, style = MaterialTheme.typography.titleMedium)
     SectionHeader("Steps")
     if (run.planSnapshot.steps.isEmpty()) Text("No steps recorded in this plan revision.")
-    run.planSnapshot.steps.forEachIndexed { i, s -> Text("${i + 1}. $s", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 2.dp)) }
+    val ticked = ProcedureLibrary.tickedSteps(run.markers)
+    if (run.planSnapshot.steps.isNotEmpty()) Text("${ticked.count { it in run.planSnapshot.steps.indices }} of ${run.planSnapshot.steps.size} steps ticked",
+        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+    run.planSnapshot.steps.forEachIndexed { i, s ->
+        Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.material3.Checkbox(checked = i in ticked, enabled = !run.isFinished,
+                onCheckedChange = { done -> vm.launch { vm.repo.tickStep(run.id, i, s, done) } })
+            Text("${i + 1}. $s", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 2.dp))
+        }
+    }
     if (run.intendedChange.isNotBlank()) { SectionHeader("Intended change"); Text(run.intendedChange) }
     SectionHeader("Build & environment")
     val build = b.builds.firstOrNull { it.id == run.buildReferenceId }

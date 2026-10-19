@@ -65,7 +65,7 @@ private fun decodeBounded(file: File): Bitmap? {
 }
 
 @Composable
-fun EvidenceScreen(vm: MainViewModel, pid: String, eid: String, back: () -> Unit) {
+fun EvidenceScreen(vm: MainViewModel, pid: String, eid: String, back: () -> Unit, openHit: (String, String?, String?) -> Unit = { _, _, _ -> }) {
     val bundle by rememberBundle(vm, pid)
     val ctx = LocalContext.current
     val b = bundle
@@ -130,6 +130,13 @@ fun EvidenceScreen(vm: MainViewModel, pid: String, eid: String, back: () -> Unit
             LabeledValue("Record id", e.id, mono = true)
             val citing = b.claims.filter { eid in it.evidenceIds }
             if (citing.isNotEmpty()) LabeledValue("Cited by", "${citing.size} claim(s)")
+
+            if (e.withdrawnAt == null && (e.title.length + e.text.length) > 8) {
+                SimilarSection(vm, "${e.title}\n${e.text.take(4_000)}\n${e.userSummary}", excludeInvestigationId = e.investigationId,
+                    excludeIds = setOf(e.id)) { h ->
+                    openHit(h.projectId, h.investigationId, if (h.kind == com.tdater.blackbox.core.search.HitKind.EVIDENCE) h.id else null)
+                }
+            }
 
             if (e.withdrawnAt == null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { editing = true; title = e.title; summary = e.userSummary; labels = e.labels.joinToString(", ") }) { Text("Edit details") }

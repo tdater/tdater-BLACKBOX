@@ -6,7 +6,16 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import android.view.WindowManager
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import com.tdater.blackbox.system.QuickCapture
+import com.tdater.blackbox.system.Reminders
+import com.tdater.blackbox.ui.components.Lingo
+import com.tdater.blackbox.ui.components.LocalLingo
+import com.tdater.blackbox.ui.theme.LocalPalette
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,18 +43,30 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        if (savedInstanceState == null) handleShare(intent)
+        if (savedInstanceState == null) handleIntent(intent)
         setContent {
-            BlackboxTheme {
+            BlackboxTheme(vm.theme) {
+                val dark = LocalPalette.current.dark
+                DisposableEffect(dark) {
+                    enableEdgeToEdge(
+                        statusBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                            else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+                        navigationBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                            else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+                    )
+                    onDispose { }
+                }
                 val snack = remember { SnackbarHostState() }
                 LaunchedEffect(vm.message) {
                     vm.message?.let { snack.showSnackbar(it); vm.message = null }
                 }
-                Backdrop {
-                    Surface(Modifier.fillMaxSize(), color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) {
-                        Box(Modifier.fillMaxSize().safeDrawingPadding()) {
-                            BlackboxNav(vm)
-                            SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
+                CompositionLocalProvider(LocalLingo provides Lingo.of(vm.wording)) {
+                    Backdrop {
+                        Surface(Modifier.fillMaxSize(), color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) {
+                            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                                BlackboxNav(vm)
+                                SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
+                            }
                         }
                     }
                 }
@@ -55,6 +76,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (vm.settings.hideInRecents) window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) vm.backupIfDue()
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent ?: return
+        intent.getStringExtra(QuickCapture.EXTRA_MODE)?.let { vm.pendingQuick = it; return }
+        intent.getStringExtra(Reminders.EXTRA_PID)?.let { vm.pendingOpen = it to intent.getStringExtra(Reminders.EXTRA_IID); return }
         handleShare(intent)
     }
 

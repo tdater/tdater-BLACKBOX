@@ -48,6 +48,14 @@ import com.tdater.blackbox.core.resume.Freshness
 import com.tdater.blackbox.core.resume.ResumeGenerator
 import com.tdater.blackbox.ui.MainViewModel
 import com.tdater.blackbox.ui.Routes
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.tdater.blackbox.core.report.ReportBuilder
+import com.tdater.blackbox.system.PdfReport
+import com.tdater.blackbox.ui.components.LocalLingo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.tdater.blackbox.ui.components.Field
 import com.tdater.blackbox.ui.components.InfoCard
 import com.tdater.blackbox.ui.components.LabeledValue
@@ -62,7 +70,6 @@ import com.tdater.blackbox.ui.components.outcomeLabel
 import com.tdater.blackbox.ui.components.outcomeTone
 import com.tdater.blackbox.ui.components.shortId
 
-private val TABS = listOf("Overview", "Evidence", "Tests", "Claims", "Timeline")
 
 @Composable
 fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigation, nav: NavHostController, modifier: Modifier = Modifier) {
@@ -70,7 +77,25 @@ fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigati
     var editing by rememberSaveable { mutableStateOf(false) }
     var startPlan by rememberSaveable { mutableStateOf<String?>(null) }
     var addingClaim by rememberSaveable { mutableStateOf(false) }
+    var remind by rememberSaveable { mutableStateOf(false) }
     val pid = b.project.id
+    val lingo = LocalLingo.current
+    val ctx = LocalContext.current
+    val tabs = listOf("Overview", lingo.evidence, "Tests", lingo.claims, "Timeline")
+    val exportPdf = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        vm.launch("PDF not saved") {
+            withContext(Dispatchers.IO) {
+                val report = ReportBuilder.build(b, inv.id)
+                ctx.contentResolver.openOutputStream(uri)?.use { out ->
+                    PdfReport.write(report, out) { id ->
+                        b.evidence.firstOrNull { it.id == id }?.attachmentPath?.takeIf { vm.repo.attachments.exists(it) }?.let { vm.repo.attachments.file(it) }
+                    }
+                } ?: throw IllegalStateException("Could not write to the chosen location")
+            }
+            vm.message = "PDF report saved."
+        }
+    }
 
     Column(modifier.fillMaxSize()) {
         val runs = b.runs.filter { it.investigationId == inv.id }
@@ -93,23 +118,34 @@ fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigati
                 Text(inv.nextAction.ifBlank { "none recorded" }, style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary)
             }
+            inv.followUpAt?.let { at ->
+                Row(Modifier.padding(top = 2.dp)) {
+                    Text("REMIND  ", style = MaterialTheme.typography.labelMedium, color = BbColors.Warn, modifier = Modifier.padding(top = 3.dp))
+                    Text(fmtTime(at) + (inv.followUpNote.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 8.dp)) {
                 Button(onClick = { nav.navigate(Routes.capture(pid, inv.id)) }, modifier = Modifier.padding(end = 8.dp)) { Text("Capture") }
                 OutlinedAction("Edit") { editing = true }
-                OutlinedAction("New test plan") { nav.navigate(Routes.plan(pid, inv.id)) }
-                OutlinedAction("Resume") { nav.navigate(Routes.resume(pid, inv.id)) }
-                OutlinedAction("Compare runs") { nav.navigate(Routes.compare(pid, inv.id)) }
-                OutlinedAction("Fix request") { nav.navigate(Routes.handoff(pid, inv.id)) }
+                OutlinedAction(lingo.newPlan) { nav.navigate(Routes.plan(pid, inv.id)) }
+                OutlinedAction(lingo.resume) { nav.navigate(Routes.resume(pid, inv.id)) }
+                OutlinedAction(lingo.compare) { nav.navigate(Routes.compare(pid, inv.id)) }
+                OutlinedAction("Readings") { nav.navigate(Routes.readings(pid, inv.id)) }
+                OutlinedAction(if (inv.followUpAt == null) "Remind me" else "Reminder") { remind = true }
+                OutlinedAction("PDF report") {
+                    exportPdf.launch("BLACKBOX - " + inv.title.replace(Regex("[^A-Za-z0-9 _-]+"), "").take(40) + ".pdf")
+                }
+                OutlinedAction(lingo.handoff) { nav.navigate(Routes.handoff(pid, inv.id)) }
                 OutlinedAction("Ask on-device AI") { nav.navigate(Routes.ai(pid, inv.id)) }
             }
         }
         ScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp, containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.primary) {
-            TABS.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
+            tabs.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
         }
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
             when (tab) {
-                0 -> overview(b, inv, nav)
+                0 -> overview(vm, b, inv, nav)
                 1 -> evidenceTab(b, inv, nav)
                 2 -> testsTab(vm, b, inv, nav) { startPlan = it }
                 3 -> claimsTab(vm, b, inv) { addingClaim = true }
@@ -126,13 +162,17 @@ fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigati
             nav.navigate(Routes.run(pid, runId))
         } else startPlan = null
     }
+    if (remind) FollowUpDialog(inv, onDismiss = { remind = false }) { at, note ->
+        remind = false
+        vm.setFollowUp(inv, at, note)
+    }
     if (addingClaim) AddClaimDialog(b, inv, onDismiss = { addingClaim = false }) { text, cls, ev, runs ->
         addingClaim = false
         vm.launch { vm.repo.addClaim(pid, inv.id, text, cls, ev, runs) }
     }
 }
 
-private fun LazyListScope.overview(b: ProjectBundle, inv: Investigation, nav: NavHostController) {
+private fun LazyListScope.overview(vm: MainViewModel, b: ProjectBundle, inv: Investigation, nav: NavHostController) {
     item {
         val capsule = b.capsules.filter { it.investigationId == inv.id }.maxByOrNull { it.generatedAt }
         SectionHeader("Resume")
@@ -166,6 +206,9 @@ private fun LazyListScope.overview(b: ProjectBundle, inv: Investigation, nav: Na
                     Text("${r.planSnapshot.title} · started ${fmtTime(r.startedAt)} — tap to resume")
                 }
             }
+        }
+        SimilarSection(vm, "${inv.title}\n${inv.problemStatement}", excludeInvestigationId = inv.id, title = "Seen something like this before?") { h ->
+            nav.navigate(if (h.kind == com.tdater.blackbox.core.search.HitKind.EVIDENCE) Routes.evidence(h.projectId, h.id) else Routes.project(h.projectId, h.investigationId))
         }
         val dangling = ReferenceIntegrity.check(b).filter { d -> b.claims.any { it.id == d.claimId && it.investigationId == inv.id } }
         if (dangling.isNotEmpty()) {
@@ -219,7 +262,8 @@ private fun LazyListScope.testsTab(vm: MainViewModel, b: ProjectBundle, inv: Inv
             Row {
                 if (open != null) Button(onClick = { nav.navigate(Routes.run(b.project.id, open.id)) }, modifier = Modifier.padding(end = 8.dp)) { Text("Resume run") }
                 else Button(onClick = { start(p.id) }, modifier = Modifier.padding(end = 8.dp)) { Text("Start run") }
-                OutlinedButton(onClick = { nav.navigate(Routes.plan(b.project.id, inv.id, p.id)) }) { Text("Revise") }
+                OutlinedButton(onClick = { nav.navigate(Routes.plan(b.project.id, inv.id, p.id)) }, modifier = Modifier.padding(end = 8.dp)) { Text("Revise") }
+                TextButton(onClick = { vm.launch { vm.repo.saveProcedureFromPlan(p.id); vm.message = "Saved to Checklists." } }) { Text("Save as checklist") }
             }
         }
     }

@@ -22,6 +22,8 @@ import com.tdater.blackbox.core.model.InvestigationStatus
 import com.tdater.blackbox.core.model.Measurement
 import com.tdater.blackbox.core.model.PlanSnapshot
 import com.tdater.blackbox.core.model.PrivacyPolicy
+import com.tdater.blackbox.core.model.Procedure
+import com.tdater.blackbox.core.model.ProcessingStatus
 import com.tdater.blackbox.core.model.Project
 import com.tdater.blackbox.core.model.ProjectBundle
 import com.tdater.blackbox.core.model.ResumeCapsule
@@ -32,7 +34,9 @@ import com.tdater.blackbox.core.model.TestPlan
 import com.tdater.blackbox.core.model.TestRun
 import com.tdater.blackbox.core.model.TimelineEvent
 import com.tdater.blackbox.core.model.TimelineType
+import com.tdater.blackbox.core.procedures.ProcedureLibrary
 import com.tdater.blackbox.core.sample.SampleProject
+import com.tdater.blackbox.core.templates.ProjectTemplates
 import com.tdater.blackbox.data.db.BlackboxDatabase
 import com.tdater.blackbox.data.db.fieldEntities
 import com.tdater.blackbox.data.db.toEntity
@@ -113,9 +117,12 @@ class BlackboxRepository(
 
     // ---------- Projects ----------
 
-    suspend fun createProject(title: String, objective: String, privacy: PrivacyPolicy = PrivacyPolicy.LOCAL_ONLY): String {
+    suspend fun createProject(title: String, objective: String, privacy: PrivacyPolicy = PrivacyPolicy.LOCAL_ONLY,
+                              templateId: String = ProjectTemplates.CUSTOM): String {
         val now = clock()
-        val p = Project(newId(), title.trim(), createdAt = now, updatedAt = now, objective = objective.trim(), privacyPolicy = privacy)
+        val t = ProjectTemplates.byId(templateId)
+        val p = Project(newId(), title.trim(), category = t.category, createdAt = now, updatedAt = now, objective = objective.trim(),
+            privacyPolicy = privacy, templateId = t.id, fieldKeys = t.fields)
         db.withTransaction {
             dao.upsertProject(p.toEntity())
             event(p.id, null, TimelineType.PROJECT_CREATED, p.id, "Project created: ${p.title}")
@@ -125,6 +132,18 @@ class BlackboxRepository(
 
     suspend fun updateProject(p: Project) = db.withTransaction {
         dao.upsertProject(p.copy(updatedAt = clock()).toEntity())
+    }
+
+    /** The condition fields this project records. Order is kept; blanks and duplicates are dropped. */
+    suspend fun setProjectFields(pid: String, keys: List<String>) = db.withTransaction {
+        val p = dao.project(pid) ?: return@withTransaction
+        dao.upsertProject(p.copy(fieldKeys = keys.map { it.trim() }.filter { it.isNotEmpty() }.distinct(), updatedAt = clock()))
+    }
+
+    /** Where quick captures go when there is no project yet. Created on first use, reused after. */
+    suspend fun ensureInbox(): String = db.withTransaction {
+        dao.allProjects().firstOrNull { it.title == INBOX_TITLE && !it.isSample }?.id
+            ?: createProject(INBOX_TITLE, "Quick captures land here. Move on to a real project when you know what it belongs to.")
     }
 
     suspend fun deleteProject(pid: String) {
@@ -163,7 +182,35 @@ class BlackboxRepository(
             if (runId == null) "Known-good reference cleared" else "Run ${runId.take(8)} marked as known-good")
     }
 
+    /** Remind-me date for an investigation. Not part of its recorded content, so it does not bump the revision. */
+    suspend fun setFollowUp(iid: String, at: Long?, note: String) = db.withTransaction {
+        val inv = dao.investigation(iid) ?: return@withTransaction
+        dao.upsertInvestigation(inv.copy(followUpAt = at, followUpNote = note.trim().take(500)))
+        event(inv.projectId, inv.id, TimelineType.NOTE, null,
+            if (at == null) "Follow-up cleared" else "Follow-up set" + (note.takeIf { it.isNotBlank() }?.let { ": ${it.take(80)}" } ?: ""))
+    }
+
+    fun observeFollowUps(): Flow<List<Investigation>> = dao.observeFollowUps().map { l -> l.map { it.toModel() } }
+    suspend fun followUps(): List<Investigation> = dao.followUps().map { it.toModel() }
+
     // ---------- Evidence ----------
+
+    /** A numeric reading ("Battery voltage" = 12.4 V) stored as MEASUREMENT evidence so it charts over time. */
+    suspend fun addReading(pid: String, iid: String?, runId: String?, name: String, value: String, unit: String): String =
+        addTextEvidence(pid, iid, runId, EvidenceKind.MEASUREMENT, name.trim(), listOf(value.trim(), unit.trim()).filter { it.isNotEmpty() }.joinToString(" "))
+
+    /**
+     * Text produced on the phone from another record (text read from a photo, a scanned code). Kept as its own
+     * record pointing back at the source, so the original stays untouched and the derived text is labelled as such.
+     */
+    suspend fun addDerivedText(sourceId: String, kind: EvidenceKind, title: String, text: String, labels: List<String>): String {
+        val src = dao.evidenceById(sourceId) ?: throw IllegalStateException("Source record not found")
+        val e = Evidence(newId(), src.projectId, src.investigationId, testRunId = src.testRunId, kind = kind, title = title.take(200),
+            text = text.take(MAX_INLINE_TEXT), capturedAt = clock(), source = EvidenceSource.APP_CAPTURE, labels = labels,
+            processingStatus = ProcessingStatus.OK, derivedFromId = src.id)
+        saveEvidence(e, "Added ${labels.firstOrNull() ?: "derived"} text from ${src.title}")
+        return e.id
+    }
 
     /**
      * Text larger than [MAX_INLINE_TEXT] (a pasted multi-megabyte log, say) would exceed what a database row can be
@@ -400,6 +447,37 @@ class BlackboxRepository(
         event(r.projectId, r.investigationId, TimelineType.RUN_FINISHED, r.id, "$verb: ${r.planSnapshot.title}")
     }
 
+    /** Ticks a plan step during a run. Recorded as an append-only marker, so the history shows when each step was done. */
+    suspend fun tickStep(runId: String, index: Int, step: String, done: Boolean) =
+        addMarker(runId, ProcedureLibrary.tickNote(index, step, done))
+
+    // ---------- Saved procedures (checklists) ----------
+
+    fun observeProcedures(): Flow<List<Procedure>> = dao.observeProcedures().map { l -> l.map { it.toModel() } }
+    suspend fun allProcedures(): List<Procedure> = dao.procedures().map { it.toModel() }
+
+    suspend fun saveProcedureFromPlan(planId: String): String = db.withTransaction {
+        val plan = dao.plan(planId)?.toModel() ?: throw IllegalStateException("Plan not found")
+        val template = dao.project(plan.projectId)?.templateId ?: ProjectTemplates.CUSTOM
+        val proc = ProcedureLibrary.fromPlan(plan, template, newId(), clock())
+        dao.upsertProcedure(proc.toEntity())
+        event(plan.projectId, plan.investigationId, TimelineType.NOTE, plan.id, "Saved as reusable checklist: ${plan.title}")
+        proc.id
+    }
+
+    suspend fun saveProcedure(p: Procedure) = db.withTransaction { dao.upsertProcedure(p.copy(updatedAt = clock()).toEntity()) }
+
+    /** Copies a saved checklist into an investigation as a fresh plan (revision 1). */
+    suspend fun usePlanFromProcedure(procedureId: String, pid: String, iid: String): String {
+        val proc = dao.procedure(procedureId)?.toModel() ?: throw IllegalStateException("Checklist not found")
+        return savePlan(ProcedureLibrary.toPlan(proc, pid, iid, newId(), clock()))
+    }
+
+    suspend fun deleteProcedure(id: String) = db.withTransaction { dao.deleteProcedure(id) }
+
+    /** Restores checklists from a backup; an existing one with the same id is replaced. */
+    suspend fun importProcedures(list: List<Procedure>) = db.withTransaction { list.forEach { dao.upsertProcedure(it.toEntity()) } }
+
     // ---------- Capsules & handoffs ----------
 
     suspend fun saveCapsule(c: ResumeCapsule) = db.withTransaction {
@@ -464,5 +542,6 @@ class BlackboxRepository(
         const val MAX_INLINE_TEXT = 200_000
         /** Cap for other free-text fields (run notes, claims, summaries). */
         const val MAX_FIELD_TEXT = 50_000
+        const val INBOX_TITLE = "Inbox"
     }
 }

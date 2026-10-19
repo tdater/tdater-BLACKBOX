@@ -30,25 +30,29 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.MaterialTheme
 import com.tdater.blackbox.ui.theme.BbColors
+import com.tdater.blackbox.ui.theme.LocalPalette
 
-/** App-wide backdrop: carbon gradient, two soft instrument glows and a faint blueprint grid. */
+/** App-wide backdrop: theme gradient, two soft glows and (flight-recorder look only) a faint blueprint grid. */
 @Composable
 fun Backdrop(content: @Composable BoxScope.() -> Unit) {
+    val p = LocalPalette.current
     Box(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF0B0C12), Color(0xFF0E0D16), Color(0xFF08090D))))
+            .background(Brush.verticalGradient(listOf(p.bgTop, p.bgMid, p.bgBottom)))
             .drawBehind {
-                val step = 28.dp.toPx()
-                val grid = Color.White.copy(alpha = 0.025f)
-                var x = 0f
-                while (x < size.width) { drawLine(grid, Offset(x, 0f), Offset(x, size.height)); x += step }
-                var y = 0f
-                while (y < size.height) { drawLine(grid, Offset(0f, y), Offset(size.width, y)); y += step }
-                drawCircle(Brush.radialGradient(listOf(BbColors.Orange.copy(alpha = 0.16f), Color.Transparent),
+                if (p.grid.alpha > 0f) {
+                    val step = 28.dp.toPx()
+                    var x = 0f
+                    while (x < size.width) { drawLine(p.grid, Offset(x, 0f), Offset(x, size.height)); x += step }
+                    var y = 0f
+                    while (y < size.height) { drawLine(p.grid, Offset(0f, y), Offset(size.width, y)); y += step }
+                }
+                drawCircle(Brush.radialGradient(listOf(p.glowA, Color.Transparent),
                     center = Offset(size.width * 0.95f, 0f), radius = size.minDimension * 0.9f),
                     radius = size.minDimension * 0.9f, center = Offset(size.width * 0.95f, 0f))
-                drawCircle(Brush.radialGradient(listOf(BbColors.Cyan.copy(alpha = 0.08f), Color.Transparent),
+                drawCircle(Brush.radialGradient(listOf(p.glowB, Color.Transparent),
                     center = Offset(0f, size.height), radius = size.minDimension),
                     radius = size.minDimension, center = Offset(0f, size.height))
             },
@@ -56,8 +60,8 @@ fun Backdrop(content: @Composable BoxScope.() -> Unit) {
     )
 }
 
-/** Orange → cyan → nothing. Used for top-bar underlines and section rules. */
-val SignalBrush: Brush get() = Brush.horizontalGradient(listOf(BbColors.Orange, BbColors.Cyan.copy(alpha = 0.7f), Color.Transparent))
+/** Accent → secondary → nothing. Used for top-bar underlines and section rules. */
+val SignalBrush: Brush @Composable get() = Brush.horizontalGradient(listOf(BbColors.Orange, BbColors.Cyan.copy(alpha = 0.7f), Color.Transparent))
 
 /** Diagonal black/orange hazard stripes, like the tape on a flight recorder. */
 @Composable
@@ -86,23 +90,26 @@ fun HazardStripe(modifier: Modifier = Modifier, height: Dp = 6.dp, color: Color 
 fun TraceGlyph(modifier: Modifier = Modifier, size: Dp = 72.dp, animated: Boolean = true) {
     val anim by rememberInfiniteTransition(label = "trace").animateFloat(
         0f, 1f, infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Restart), label = "sweep")
+    val orange = BbColors.Orange
+    val hot = BbColors.OrangeHot
+    val ink = MaterialTheme.colorScheme.onBackground
     Canvas(modifier.size(size)) {
         val s = this.size.minDimension
         val stroke = s * 0.045f
         val box = Size(s * 0.78f, s * 0.6f)
         val tl = Offset((s - box.width) / 2, (s - box.height) / 2)
-        drawRoundRect(Brush.linearGradient(listOf(BbColors.Orange.copy(alpha = 0.25f), Color.Transparent), tl,
+        drawRoundRect(Brush.linearGradient(listOf(orange.copy(alpha = 0.25f), Color.Transparent), tl,
             Offset(tl.x + box.width, tl.y + box.height)), tl, box, androidx.compose.ui.geometry.CornerRadius(s * 0.08f))
-        drawRoundRect(Color(0xFFECEAF2), tl, box, androidx.compose.ui.geometry.CornerRadius(s * 0.08f), style = Stroke(stroke))
+        drawRoundRect(ink, tl, box, androidx.compose.ui.geometry.CornerRadius(s * 0.08f), style = Stroke(stroke))
         val pts = listOf(0.12f to 0.55f, 0.32f to 0.55f, 0.42f to 0.28f, 0.54f to 0.8f, 0.64f to 0.45f, 0.88f to 0.45f)
             .map { (px, py) -> Offset(tl.x + box.width * px, tl.y + box.height * py) }
         val path = Path().apply { moveTo(pts[0].x, pts[0].y); pts.drop(1).forEach { lineTo(it.x, it.y) } }
-        drawPath(path, BbColors.Orange.copy(alpha = 0.45f), style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, orange.copy(alpha = 0.45f), style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
         // Bright head of the sweep.
         val sweep = if (animated) anim else 1f
         val head = tl.x + box.width * (0.08f + 0.84f * sweep)
         clipRect(left = head - box.width * 0.22f, right = head) {
-            drawPath(path, Brush.horizontalGradient(listOf(Color.Transparent, BbColors.OrangeHot), head - box.width * 0.22f, head),
+            drawPath(path, Brush.horizontalGradient(listOf(Color.Transparent, hot), head - box.width * 0.22f, head),
                 style = Stroke(stroke * 1.4f, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
     }
