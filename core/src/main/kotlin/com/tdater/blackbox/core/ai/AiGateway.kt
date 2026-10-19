@@ -3,11 +3,12 @@ package com.tdater.blackbox.core.ai
 import com.tdater.blackbox.core.model.PrivacyPolicy
 import com.tdater.blackbox.core.model.Project
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.withTimeout
 
 /*
- * Optional AI boundary (P1). No provider ships in this build, so every request ends
- * in [AiResult.Unavailable]. The policy gate below is the enforcement point: it runs
+ * Optional AI boundary (P1). The only provider is an on-device model the user imports;
+ * without one every request ends in [AiResult.Unavailable]. The policy gate below is the enforcement point: it runs
  * before any provider is touched, regardless of which UI or code path asked.
  */
 
@@ -63,8 +64,10 @@ class AiGateway(
             withTimeout(timeoutMs) { p.complete(packet) }
         } catch (e: TimeoutCancellationException) {
             return AiResult.Failed("Provider timed out after ${timeoutMs / 1000}s. Nothing was saved.")
+        } catch (e: CancellationException) {
+            throw e // the caller cancelled; not a provider failure
         } catch (e: Exception) {
-            return AiResult.Failed("Provider error: ${e.javaClass.simpleName}. Nothing was saved.")
+            return AiResult.Failed("Provider error: ${e.message?.take(200) ?: e.javaClass.simpleName}. Nothing was saved.")
         }
         val allowed = packet.items.map { it.recordId }.toSet()
         val invented = raw.flatMap { it.referencedIds }.filter { it !in allowed }

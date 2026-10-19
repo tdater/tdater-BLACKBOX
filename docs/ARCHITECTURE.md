@@ -27,7 +27,9 @@ Child tables cascade on project delete. Small ordered lists (steps, labels, meas
 ## Privacy boundary
 - `AiGateway.authorize()` runs before any provider: global switch on, every context item's project `AI_ALLOWED`,
   size limit. Mixed-project requests with any LOCAL_ONLY record are denied. Responses citing ids outside the
-  selected context are discarded. No provider implementation exists, so requests end `Unavailable`.
+  selected context are discarded. The only provider is `OnDeviceProvider` (LiteRT-LM on CPU) using a model file the
+  user imports into `filesDir/models`; without one, requests end `Unavailable`. Records go in as fenced `<record>`
+  blocks with short handles (R1…) that `AiPrompt.parse` maps back to ids.
 - Backups disabled; no network permission is declared at all.
 - Share-sheet import only stages content until the user picks a project. No exported service/receiver/provider.
 

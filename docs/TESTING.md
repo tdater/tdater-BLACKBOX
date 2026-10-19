@@ -3,12 +3,14 @@
 ## Automated
 | Command | Where it ran | Result |
 |---|---|---|
-| `./gradlew :core:test` | Claude cloud sandbox (JDK 21) | 27/27 pass |
+| `./gradlew :core:test` | Claude cloud sandbox (JDK 21) | 33/33 pass |
 | `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | GitHub Actions (`android.yml`, job `build`) | see latest run |
 | `./gradlew :app:connectedDebugAndroidTest` (`SmokeFlowTest`) | GitHub Actions emulators: API 34 phone (pixel_6) and a pixel_6 resized to the unfolded Fold inner display (2208x1840 @ 420dpi) | first green 2026-10-19 |
 
 `:core` tests (`CoreAcceptanceTest`) cover acceptance D, E, F, G, H, J, K. `:app` Robolectric tests
-(`RepositoryWorkflowTest`) cover A, B, duplicate-run prevention, F, H and event-log import through the real Room database.
+(`RepositoryWorkflowTest`) cover A, B, duplicate-run prevention, F, H, event-log import and oversized pasted text through the real Room database.
+`AiPromptTest` covers AI context selection, prompt fencing, handle mapping, invented-reference rejection and cancel handling.
+No test runs a real model (no model file in CI); on-device generation needs a manual check on the phone.
 `SmokeFlowTest` drives the real UI: guide, sample project, workbench, activity recreation (selection survives),
 search and the regression checklist. Screenshots per profile are uploaded as `emulator-phone` / `emulator-fold-unfolded`
 artifacts. It does not cover real hinge postures (tabletop) or the outer display; those need the device.

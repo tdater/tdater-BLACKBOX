@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.tdater.blackbox.core.search.HitKind
+import com.tdater.blackbox.ui.screens.AiScreen
 import com.tdater.blackbox.ui.screens.CaptureScreen
 import com.tdater.blackbox.ui.screens.CompareScreen
 import com.tdater.blackbox.ui.screens.ConfigScreen
@@ -40,6 +41,7 @@ object Routes {
     fun config(pid: String) = "config/$pid"
     fun evidence(pid: String, eid: String) = "evidence/$pid/$eid"
     fun regression(pid: String) = "regression/$pid"
+    fun ai(pid: String, iid: String) = "ai/$pid/$iid"
 }
 
 private fun opt(name: String) = navArgument(name) { type = NavType.StringType; nullable = true; defaultValue = null }
@@ -97,6 +99,10 @@ fun BlackboxNav(vm: MainViewModel, nav: NavHostController = rememberNavControlle
         }
         composable("handoff/{pid}/{iid}") { e ->
             HandoffScreen(vm, e.arguments!!.getString("pid")!!, e.arguments!!.getString("iid")!!, back)
+        }
+        composable("ai/{pid}/{iid}") { e ->
+            AiScreen(vm, e.arguments!!.getString("pid")!!, e.arguments!!.getString("iid")!!, back,
+                openSettings = { nav.navigate(Routes.SETTINGS) })
         }
         composable("config/{pid}") { e -> ConfigScreen(vm, e.arguments!!.getString("pid")!!, back) }
         composable("evidence/{pid}/{eid}") { e ->

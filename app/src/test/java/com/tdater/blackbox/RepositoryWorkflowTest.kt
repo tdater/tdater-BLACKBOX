@@ -147,4 +147,17 @@ class RepositoryWorkflowTest {
         assertEquals(1, File(attachRoot, pid).listFiles()!!.size)
         db.close()
     }
+
+    @Test
+    fun hugePastedTextOverflowsToAttachmentInsteadOfBreakingTheRow() = runTest {
+        val (db, repo) = open("e.db")
+        val pid = repo.createProject("P", "")
+        val big = buildString { repeat(60_000) { append("line ").append(it).append(" Broken pipe\n") } } // ~1.5M chars
+        val eid = repo.addTextEvidence(pid, null, null, EvidenceKind.LOG, "", big)
+        val e = repo.loadBundle(pid)!!.evidence.single { it.id == eid }
+        assertTrue(e.text.length < BlackboxRepository.MAX_INLINE_TEXT + 200)
+        assertTrue("Truncated" in e.text)
+        assertEquals(big, repo.attachments.file(e.attachmentPath!!).readText())
+        db.close()
+    }
 }

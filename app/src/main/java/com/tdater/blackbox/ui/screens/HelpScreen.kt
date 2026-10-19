@@ -131,7 +131,19 @@ object HelpContent {
         HelpTopic("Backup, archives and privacy", "Your data, your copies.", listOf(
             p("Android backup is turned off for BLACKBOX, so the only copies of your records are the ones you export. Project menu → Export project archive writes a .zip with every record and attachment plus checksums."),
             p("Import project archive (on Projects) always creates a new project, so it can never overwrite existing work. Damaged or tampered archives are rejected."),
-            p("Projects default to LOCAL ONLY. No AI provider ships in this build, so nothing is sent anywhere. If one is added later, it will only see records you pick, from projects marked AI ALLOWED, while the global switch in Settings is on."),
+            p("Projects default to LOCAL ONLY. The only AI is a model file you import, and it runs on the phone, so nothing is sent anywhere. Even so, it only sees records you tick, from projects marked AI ALLOWED, while the global switch in Settings is on."),
+        )),
+        HelpTopic("On-device AI (optional)", "A local model that suggests next steps. Off until you set it up.", listOf(
+            p("BLACKBOX can run a LiteRT-LM language model on the phone's CPU. There is no account, key or internet involved, and every other feature works without it."),
+            steps(
+                "On any device, download a .litertlm model, for example Gemma 3 1B IT from the litert-community page on Hugging Face. Smaller is faster.",
+                "Get the file onto the phone (Downloads, cloud storage), then Settings → On-device AI model → Import model file.",
+                "Turn on \"Allow AI features globally\" in Settings.",
+                "Open an investigation → Ask on-device AI. If the project is LOCAL ONLY, you're asked before it becomes AI ALLOWED.",
+                "Pick a task, untick any record the model shouldn't read, then Ask. Answers cite the records they used.",
+                "Anything worth keeping can be saved as an INFERRED claim authored by \"ai\". It is still a guess until you test it.",
+            ),
+            p("Answers that cite records the model wasn't given are thrown away. Small models are often wrong; treat output as a brainstorm, not a diagnosis."),
         )),
         HelpTopic("Worked example: the frozen OBD gauges", "One investigation, start to finish (it's the sample project).", listOf(
             p("Problem: in a car-diagnostics app, RPM and speed freeze after the screen turns off and back on."),
@@ -156,7 +168,8 @@ object HelpContent {
             qa("I edited a test plan. Did my old runs change?", "No. Each run keeps a frozen copy of the plan revision it used."),
             qa("Can I delete evidence?", "Yes. It is withdrawn: the file goes, the record stays, and claims that relied on it get flagged."),
             qa("Why isn't a plan on my regression checklist automatically?", "A fixed failure is only a suggestion. You decide what is worth re-checking after every change."),
-            qa("Is there AI in this?", "Not yet. The privacy rules and refusal paths are built and tested; a provider will be optional and off by default."),
+            qa("Is there AI in this?", "Optional and off by default: an on-device model you import yourself. It never goes online and never sees LOCAL ONLY projects. See On-device AI above."),
+            qa("The AI is slow or says it failed.", "It runs on the CPU, so a 1B model takes tens of seconds and bigger ones take minutes. Untick records to shorten the input, or import a smaller model. If the model file is damaged or unsupported, the answer says so and nothing is saved."),
             qa("The microphone or camera was denied. Now what?", "Everything else keeps working. To allow it later: Android Settings → Apps → BLACKBOX → Permissions."),
         )),
     )

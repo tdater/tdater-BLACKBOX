@@ -165,12 +165,29 @@ class BlackboxRepository(
 
     // ---------- Evidence ----------
 
+    /**
+     * Text larger than [MAX_INLINE_TEXT] (a pasted multi-megabyte log, say) would exceed what a database row can be
+     * read back with, so the full text is saved as an attached .txt file and the inline copy is truncated, saying so.
+     */
     suspend fun addTextEvidence(pid: String, iid: String?, runId: String?, kind: EvidenceKind, title: String, text: String): String {
         val now = clock()
-        val e = Evidence(newId(), pid, iid, testRunId = runId, kind = kind,
+        val id = newId()
+        val stored = if (text.length > MAX_INLINE_TEXT) withContext(Dispatchers.IO) {
+            attachments.write(text.byteInputStream(), pid, id, "pasted-${kind.name.lowercase()}.txt", "text/plain")
+        } else null
+        val inline = if (stored == null) text
+            else text.take(MAX_INLINE_TEXT) + "\n\n[Truncated: the full text (${text.length} characters) is in the attached file.]"
+        val e = Evidence(id, pid, iid, testRunId = runId, kind = kind,
             title = title.trim().ifEmpty { text.lineSequence().firstOrNull()?.take(60)?.ifBlank { null } ?: "Note" },
-            text = text, capturedAt = now, source = EvidenceSource.USER)
-        saveEvidence(e, "Added ${kind.name.lowercase()}: ${e.title}")
+            text = inline, originalFilename = stored?.displayName, mimeType = stored?.mimeType,
+            attachmentPath = stored?.relativePath, attachmentSha256 = stored?.sha256, attachmentBytes = stored?.bytes,
+            capturedAt = now, source = EvidenceSource.USER)
+        try {
+            saveEvidence(e, "Added ${kind.name.lowercase()}: ${e.title}")
+        } catch (t: Throwable) {
+            stored?.let { attachments.delete(it.relativePath) }
+            throw t
+        }
         return e.id
     }
 
@@ -246,7 +263,7 @@ class BlackboxRepository(
 
     suspend fun updateEvidenceText(id: String, title: String, summary: String, labels: List<String>) = db.withTransaction {
         val e = dao.evidenceById(id) ?: return@withTransaction
-        dao.upsertEvidence(e.copy(title = title, userSummary = summary, labels = labels))
+        dao.upsertEvidence(e.copy(title = title.take(MAX_FIELD_TEXT), userSummary = summary.take(MAX_FIELD_TEXT), labels = labels))
         e.investigationId?.let { dao.bumpRevision(it, clock()) }
     }
 
@@ -271,8 +288,9 @@ class BlackboxRepository(
 
     // ---------- Claims ----------
 
-    suspend fun addClaim(pid: String, iid: String, text: String, cls: ClaimClassification, evidenceIds: List<String>, runIds: List<String>): String {
-        val c = Claim(newId(), pid, iid, text.trim(), cls, evidenceIds, runIds, "user", clock())
+    suspend fun addClaim(pid: String, iid: String, text: String, cls: ClaimClassification, evidenceIds: List<String>, runIds: List<String>,
+                         author: String = "user"): String {
+        val c = Claim(newId(), pid, iid, text.trim().take(MAX_FIELD_TEXT), cls, evidenceIds, runIds, author, clock())
         db.withTransaction {
             dao.upsertClaim(c.toEntity())
             dao.bumpRevision(iid, clock())
@@ -356,15 +374,15 @@ class BlackboxRepository(
                                measurements: List<Measurement>) = db.withTransaction {
         val r = dao.run(runId) ?: return@withTransaction
         if (r.outcome != RunOutcome.NOT_FINISHED) return@withTransaction
-        dao.updateRun(r.copy(actualResult = actualResult, actualChanges = actualChanges, deviations = deviations,
-            userNotes = notes, measurements = measurements))
+        dao.updateRun(r.copy(actualResult = actualResult.take(MAX_FIELD_TEXT), actualChanges = actualChanges.take(MAX_FIELD_TEXT),
+            deviations = deviations.take(MAX_FIELD_TEXT), userNotes = notes.take(MAX_FIELD_TEXT), measurements = measurements))
     }
 
     suspend fun addMarker(runId: String, note: String) = db.withTransaction {
         val r = dao.run(runId) ?: return@withTransaction
         if (r.outcome != RunOutcome.NOT_FINISHED) return@withTransaction
         val now = clock()
-        dao.updateRun(r.copy(markers = r.markers + RunMarker(now, note.ifBlank { "Marker" })))
+        dao.updateRun(r.copy(markers = r.markers + RunMarker(now, note.ifBlank { "Marker" }.take(2_000))))
         event(r.projectId, r.investigationId, TimelineType.RUN_MARKER, r.id, "Marker: ${note.ifBlank { "Marker" }.take(80)}")
     }
 
@@ -442,5 +460,9 @@ class BlackboxRepository(
 
     companion object {
         const val MAX_EVENT_LOG_BYTES = 8L * 1024 * 1024
+        /** Inline evidence text kept in the row; the rest goes to an attached file. Far below the ~2 MB CursorWindow limit. */
+        const val MAX_INLINE_TEXT = 200_000
+        /** Cap for other free-text fields (run notes, claims, summaries). */
+        const val MAX_FIELD_TEXT = 50_000
     }
 }

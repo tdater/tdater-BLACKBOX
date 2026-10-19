@@ -37,6 +37,7 @@ JDK 17+, AGP 8.7.3, Kotlin 2.0.21, Compose BOM 2024.12.01, Room 2.6.1. minSdk 29
 
 ## What it is not
 Not a chat app, not a recorder that runs in the background, not a remote control for other apps,
-and not an AI that "knows" root causes. No AI provider ships in this build.
+and not an AI that "knows" root causes. Optional AI is a LiteRT-LM model file you import that runs on the phone
+(no network permission); its answers are saved only as INFERRED claims when you choose to.
 
 Docs: [ARCHITECTURE](docs/ARCHITECTURE.md) · [DECISIONS](docs/DECISIONS.md) · [TESTING](docs/TESTING.md) · [PLAN](docs/PLAN.md)

@@ -9,7 +9,9 @@
 | Soft-withdraw evidence | Keeps claim references explainable (acceptance E). |
 | Insert-only capsules and env snapshots | Historical records never silently rewritten (F, snapshot immutability). |
 | Archive import = new project, ids remapped | Cannot overwrite existing data. |
-| No AI provider shipped | No safe key handling without a backend; all offline workflows complete. Gateway + refusal tests exist. |
+| On-device AI only (LiteRT-LM, user-imported model) | No keys, no cost, no INTERNET permission. Models are imported, not downloaded, so the app stays offline. Cloud providers stay out: no safe key handling without a backend. |
+| LOCAL_ONLY also blocks the on-device model | One rule users can trust; flipping a project to AI ALLOWED is an explicit, confirmed step. |
+| Text caps (200k inline, 50k fields) | A pasted multi-MB log overflows to a text attachment instead of bloating the row or the UI. |
 | Dark theme only | Brief asks for a legible dark workbench; one theme to verify. |
 | Debug `applicationIdSuffix .debug` | Coexists with a future signed release. No production signing key invented. |
 | APK built in GitHub Actions | The Claude cloud sandbox blocks dl.google.com (Google Maven + SDK). `:core` builds anywhere. |

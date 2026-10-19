@@ -77,6 +77,9 @@ dependencies {
     implementation("androidx.window:window:1.3.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    // On-device LLM runtime. Runs locally; the app still has no INTERNET permission.
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
+
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")

@@ -10,8 +10,8 @@ Legend: ✅ implemented + automated test · 🟡 implemented, needs device verif
 | 3 | Evidence: text/log/measurement, file import, photo (system camera), voice (MediaRecorder) | 🟡 |
 | 4 | Fold: compact/two-pane workspace, tabletop split on run screen, saved state | 🟡 |
 | 5 | Compare, resume capsules, handoff, archive round-trip | ✅ core tests · 🟡 UI |
-| 6 | Regression checklist, search/filter, polish | 🟨 search + regression checklist built, core-tested; polish pending |
-| 7 | Optional AI provider | ⬜ gateway + policy tests only, no provider |
+| 6 | Regression checklist, search/filter, polish | ✅ search + regression core-tested; huge-input caps repo-tested |
+| 7 | Optional AI provider | 🟡 on-device LiteRT-LM, user-imported model; prompt/parse/policy core-tested, needs a real model on device |
 | 8 | Release handoff (signed build) | ⬜ no production key by design |
 
 ## Acceptance scenarios (brief §15)

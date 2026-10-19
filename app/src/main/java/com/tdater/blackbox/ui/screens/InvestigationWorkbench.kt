@@ -84,6 +84,7 @@ fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigati
                 OutlinedAction("Resume") { nav.navigate(Routes.resume(pid, inv.id)) }
                 OutlinedAction("Compare runs") { nav.navigate(Routes.compare(pid, inv.id)) }
                 OutlinedAction("Fix request") { nav.navigate(Routes.handoff(pid, inv.id)) }
+                OutlinedAction("Ask on-device AI") { nav.navigate(Routes.ai(pid, inv.id)) }
             }
         }
         ScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp) {

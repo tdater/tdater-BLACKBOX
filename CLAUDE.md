@@ -12,7 +12,8 @@ Fold-native Android investigation workbench. Source of truth for product scope: 
 - Evidence deletion is a soft withdraw (record kept, file removed) so claims never silently cite missing proof.
 - Attachments are copied into app storage (`filesDir/attachments/<projectId>/<evidenceId>/<name>`); external URIs are never stored.
 - Archive import always creates a new project (ids remapped); never overwrite.
-- LOCAL_ONLY is enforced in `AiGateway.authorize`, not by hiding UI. No provider ships yet.
+- LOCAL_ONLY is enforced in `AiGateway.authorize`, not by hiding UI. It applies to the on-device model too.
+- The only AI provider is on-device LiteRT-LM (`app/.../ai/OnDeviceProvider.kt`) with a user-imported model (`ModelStore`). No INTERNET permission, no keys. AI output is saved only as INFERRED claims with author "ai".
 - No analytics/telemetry/ads; Android backup disabled (`allowBackup=false`, data extraction rules exclude all).
 - Room schema changes require a `Migration`; no destructive migration. Schemas exported to `app/schemas`.
 

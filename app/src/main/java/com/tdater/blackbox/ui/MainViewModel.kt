@@ -9,7 +9,15 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tdater.blackbox.BlackboxApp
+import com.tdater.blackbox.ai.OnDeviceProvider
+import com.tdater.blackbox.core.ai.AiGateway
+import com.tdater.blackbox.core.ai.AiPrompt
+import com.tdater.blackbox.core.ai.AiResult
+import com.tdater.blackbox.core.ai.ContextItem
+import com.tdater.blackbox.core.ai.ContextPacket
 import com.tdater.blackbox.core.model.EvidenceKind
+import com.tdater.blackbox.core.model.Project
+import kotlinx.coroutines.Job
 import android.os.Build
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +27,9 @@ import java.io.File
 
 data class RecordingTarget(val projectId: String, val investigationId: String?, val runId: String?)
 
+/** Result of one on-device AI ask, kept until the user leaves it or asks again. */
+data class AiOutcome(val investigationId: String, val task: AiPrompt.Task, val result: AiResult)
+
 /**
  * Activity-scoped state that must survive configuration changes (fold/unfold, rotation):
  * user-visible messages, the busy flag and any in-progress audio recording.
@@ -27,6 +38,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val blackbox = app as BlackboxApp
     val repo = blackbox.repository
     val settings = blackbox.settings
+    val models = blackbox.models
 
     var message by mutableStateOf<String?>(null)
     /** Shared-in content awaiting a project choice; survives rotation/fold. */
@@ -47,6 +59,38 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    // ---- On-device AI (held here so folding, rotating or leaving the screen never restarts a slow generation) ----
+    var aiRunningFor by mutableStateOf<String?>(null)
+        private set
+    var aiOutcome by mutableStateOf<AiOutcome?>(null)
+    private var aiJob: Job? = null
+
+    fun askAi(project: Project, investigationTitle: String, investigationId: String, task: AiPrompt.Task, items: List<ContextItem>) {
+        if (aiJob?.isActive == true) return
+        aiOutcome = null
+        aiRunningFor = investigationId
+        aiJob = viewModelScope.launch {
+            try {
+                val built = AiPrompt.build(task, investigationTitle, items)
+                // Policy is re-read from the database at request time, not trusted from the screen.
+                val current = repo.allProjects().firstOrNull { it.id == project.id }
+                val model = kotlinx.coroutines.withContext(Dispatchers.IO) { models.current() }
+                val gateway = AiGateway(model?.let { OnDeviceProvider(it.file, built) }, { settings.aiEnabled },
+                    { pid -> current?.takeIf { it.id == pid } }, timeoutMs = AI_TIMEOUT_MS)
+                aiOutcome = AiOutcome(investigationId, task, gateway.request(ContextPacket(task.name, items)))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                aiOutcome = AiOutcome(investigationId, task, AiResult.Failed("Cancelled. Nothing was saved."))
+                throw e
+            } catch (e: Exception) {
+                aiOutcome = AiOutcome(investigationId, task, AiResult.Failed("Could not run the model: ${e.message ?: e.javaClass.simpleName}"))
+            } finally {
+                aiRunningFor = null
+            }
+        }
+    }
+
+    fun cancelAi() { aiJob?.cancel() }
 
     // ---- Voice recording (kept here so rotation/fold never restarts or duplicates it) ----
     private var recorder: MediaRecorder? = null
@@ -112,6 +156,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 "Saving recording failed: ${e.message}"
             }
         }
+    }
+
+    companion object {
+        /** CPU generation on a phone is slow; three minutes before giving up. */
+        const val AI_TIMEOUT_MS = 180_000L
     }
 
     override fun onCleared() {
