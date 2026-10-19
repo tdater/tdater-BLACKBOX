@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BLACKBOX</title>
+<meta name="description" content="BLACKBOX is a flight recorder for debugging on Android: capture evidence, run tests against frozen plans, compare runs honestly and pick up exactly where you left off. Offline, no account, no internet permission.">
+<meta property="og:title" content="BLACKBOX">
+<meta property="og:description" content="A flight recorder for debugging, built for the Galaxy Fold. Free APK download.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tdater.github.io/BLACKBOX-releases/">
+<meta name="theme-color" content="#0a0b10">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Crect width='108' height='108' rx='24' fill='%23ff6b1a'/%3E%3Crect x='32' y='36' width='44' height='36' rx='4' fill='%23111218'/%3E%3Cpath d='M37 52h9l4-10 5 18 4-12h12' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;700&display=swap">
+<style>
+  /* Layout: one instrument-panel column; hero = strip-chart recorder + unfolded Fold mock; sections are labelled channels. */
+  :root {
+    color-scheme: dark;
+    --carbon: #0a0b10;
+    --panel: #151821;
+    --panel-2: #1d2130;
+    --line: #2b3044;
+    --text: #eceaf2;
+    --muted: #a9afc2;
+    --orange: #ff6b1a;
+    --orange-hot: #ff9a3d;
+    --cyan: #3fe0d0;
+    --good: #4be38a;
+    --bad: #ff5a5f;
+    --warn: #ffc23d;
+    --display: "Chakra Petch", "Bahnschrift", "Arial Narrow", sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--carbon); }
+  body {
+    margin: 0; background: var(--carbon); color: var(--text); font: 17px/1.6 var(--body);
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0 64px;
+    background-image:
+      radial-gradient(900px 420px at 85% -80px, rgba(255,107,26,.22), transparent 70%),
+      radial-gradient(700px 500px at -10% 110%, rgba(63,224,208,.08), transparent 70%),
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: auto, auto, 28px 28px, 28px 28px;
+  }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--carbon); }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  a { color: var(--orange-hot); }
+  :focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+
+  .hazard { height: 8px; border-radius: 3px; background: repeating-linear-gradient(-45deg, var(--orange) 0 12px, #111 12px 24px); }
+
+  header { padding-block: 44px 28px; display: grid; gap: 22px; }
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .brand svg { width: 72px; height: 72px; flex: none; filter: drop-shadow(0 0 22px rgba(255,107,26,.45)); }
+  h1 { margin: 0; font: 700 clamp(40px, 9vw, 84px)/.95 var(--display); letter-spacing: .04em; text-wrap: balance; }
+  h1 span { color: var(--orange); }
+  .kicker { font: 600 13px var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--cyan); margin: 0 0 6px; }
+  .lede { max-width: 62ch; font-size: 20px; margin: 0; text-wrap: pretty; }
+  .lede + .lede { color: var(--muted); font-size: 17px; }
+
+  .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 28px; align-items: center; }
+  .hero > * { min-width: 0; }
+
+  .download { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn {
+    display: inline-block; text-decoration: none; font: 700 16px/1 var(--display); letter-spacing: .08em; text-transform: uppercase;
+    color: #160800; background: var(--orange); border-radius: 8px; padding: 16px 22px;
+    box-shadow: 0 5px 0 #9a3a06, 0 0 26px rgba(255,107,26,.4);
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #9a3a06; }
+  .btn.ghost { background: transparent; color: var(--text); border: 2px solid var(--cyan); box-shadow: none; }
+  .meta { font: 13px var(--mono); color: var(--muted); letter-spacing: .04em; }
+
+  /* Strip-chart recorder */
+  .recorder { background: #07080c; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .recorder .bar { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; font: 12px var(--mono); color: var(--muted); border-bottom: 1px solid var(--line); letter-spacing: .08em; }
+  .recorder .rec { color: var(--bad); }
+  .recorder .rec::before { content: "● "; animation: blink 1.2s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  .recorder canvas { display: block; width: 100%; height: 130px; }
+
+  .readouts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .readout { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .readout b { display: block; font: 700 40px/1 var(--display); color: var(--orange); text-shadow: 0 0 14px rgba(255,107,26,.4); font-variant-numeric: tabular-nums; }
+  .readout small { font: 12px var(--mono); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+
+  /* Unfolded Fold mock */
+  .fold { position: relative; aspect-ratio: 2208 / 1840; max-width: 100%; border-radius: 22px; padding: 10px; background: #1a1c22;
+    border: 1px solid #333849; box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,107,26,.12); }
+  .screen { position: relative; height: 100%; border-radius: 14px; overflow: hidden; display: grid; grid-template-columns: 38% 1fr;
+    background: linear-gradient(180deg, #0b0c12, #0e0d16); font-size: 9px; line-height: 1.35; }
+  .screen::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: rgba(255,255,255,.07); }
+  .pane { padding: 10px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+  .pane + .pane { border-left: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,107,26,.12), transparent 40%); }
+  .m-top { font: 700 12px var(--display); letter-spacing: .06em; padding-bottom: 5px; border-bottom: 2px solid; border-image: linear-gradient(90deg, var(--orange), var(--cyan), transparent) 1; }
+  .m-sub { font: 7px var(--mono); color: var(--cyan); letter-spacing: .1em; }
+  .m-card { background: rgba(23,26,35,.9); border: 1px solid rgba(255,107,26,.35); border-radius: 8px; padding: 6px 7px; position: relative; overflow: hidden; }
+  .m-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--c, var(--orange)); }
+  .m-card b { display: block; font-size: 10px; }
+  .m-card i { font-style: normal; color: var(--muted); }
+  .pill { display: inline-block; font: 600 7px var(--mono); padding: 1px 5px; border-radius: 99px; border: 1px solid; margin-right: 3px; }
+  .p-good { color: var(--good); background: rgba(75,227,138,.12); }
+  .p-bad { color: var(--bad); background: rgba(255,90,95,.12); }
+  .p-warn { color: var(--warn); background: rgba(255,194,61,.12); }
+  .p-info { color: var(--cyan); background: rgba(63,224,208,.12); }
+  .m-h { font: 700 13px var(--display); }
+  .m-next { color: var(--orange); }
+  .m-tabs { display: flex; gap: 8px; font: 7px var(--mono); color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 3px; }
+  .m-tabs span:first-child { color: var(--orange); border-bottom: 2px solid var(--orange); }
+
+  nav {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 3; background: rgba(10,11,16,.94);
+    backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding: 10px 16px; overflow-x: auto;
+  }
+  nav ul { list-style: none; margin: 0 auto; padding: 0; display: flex; gap: 6px; max-width: 1080px; }
+  nav a { display: block; white-space: nowrap; text-decoration: none; font: 600 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; }
+  nav a:hover { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange); }
+
+  section { padding-block: 48px 4px; scroll-margin-top: 64px; }
+  h2 { margin: 0 0 8px; font: 700 clamp(24px, 4vw, 34px)/1.15 var(--display); letter-spacing: .02em; text-wrap: balance; }
+  h2 .ch { display: inline-block; font: 600 12px var(--mono); color: var(--cyan); letter-spacing: .14em; vertical-align: 6px; margin-left: 10px; }
+  .intro { color: var(--muted); max-width: 68ch; margin: 0 0 20px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .card.wide { grid-column: 1 / -1; }
+  h3 { margin: 0; font: 700 20px/1.2 var(--display); color: var(--orange-hot); letter-spacing: .03em; text-transform: uppercase; }
+  ul.list { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+  ul.list li::marker { content: "▸ "; color: var(--orange); }
+  .muted { color: var(--muted); margin: 0; }
+  code, .mono { font: 14px var(--mono); }
+
+  /* The investigation loop is a real sequence, so it is numbered. */
+  .loop { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; counter-reset: step; }
+  .step { counter-increment: step; background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--orange); border-radius: 10px; padding: 12px; min-width: 0; }
+  .step::before { content: counter(step, decimal-leading-zero); font: 600 12px var(--mono); color: var(--cyan); letter-spacing: .1em; }
+  .step b { display: block; font: 700 18px/1.2 var(--display); margin: 2px 0 4px; }
+  .step small { color: var(--muted); font-size: 14px; line-height: 1.4; display: block; }
+
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { text-align: left; font: 600 12px var(--mono); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; padding: 8px 6px; }
+  td { padding: 9px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+  td.mono { white-space: nowrap; }
+  .st { font: 600 12px var(--mono); white-space: nowrap; padding: 2px 8px; border-radius: 99px; border: 1px solid; }
+
+  .claims { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .claim { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+  .claim .st { display: inline-block; margin-bottom: 6px; }
+  .claim small { color: var(--muted); font-size: 14px; display: block; line-height: 1.45; }
+
+  pre.md { margin: 0; background: #07080c; border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; font: 13px/1.55 var(--mono); color: #cfd3e0; }
+  pre.md .h { color: var(--orange-hot); }
+  pre.md .k { color: var(--cyan); }
+  pre.md .r { color: var(--bad); }
+
+  ol.steps { margin: 0; padding-left: 26px; display: grid; gap: 10px; }
+  ol.steps li::marker { font: 600 15px var(--mono); color: var(--orange); }
+
+  .note { border: 1px solid var(--orange); background: #1a0f08; border-radius: 12px; padding: 18px 20px; margin-top: 52px; display: grid; gap: 8px; }
+  .note h2 { color: var(--orange-hot); font-size: 24px; }
+  footer { margin-top: 40px; color: var(--muted); font: 13px var(--mono); display: grid; gap: 14px; }
+
+  @media (max-width: 880px) {
+    .hero { grid-template-columns: 1fr; }
+    .loop { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .claims { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 680px) {
+    .grid, .grid.three { grid-template-columns: 1fr; }
+    .readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .loop { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .brand svg { width: 56px; height: 56px; }
+    .screen { font-size: 7px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .recorder .rec::before { animation: none; } }
+</style>
+
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="hazard" aria-hidden="true"></div>
+    <div class="hero">
+      <div style="display:grid; gap:20px">
+        <div class="brand">
+          <svg viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" rx="24" fill="#ff6b1a"/><rect x="32" y="36" width="44" height="36" rx="4" fill="#111218"/><path d="M32 64h8l-4 8h-4zM46 64h8l-4 8h-8zM60 64h8l-4 8h-8z" fill="#ff6b1a"/><path d="M37 52h9l4-10 5 18 4-12h12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <p class="kicker">Flight recorder for debugging</p>
+            <h1>BLACK<span>BOX</span></h1>
+          </div>
+        </div>
+        <p class="lede">When a bug takes three evenings, the hard part isn't the fix. It's remembering what you already tried, on which build, with what settings, and what actually happened.</p>
+        <p class="lede">BLACKBOX records it for you. Capture logs, photos and voice notes, run tests against plans that can't quietly change, compare runs without pretending gaps are "the same", and resume tomorrow from a one-screen briefing. Everything stays on the phone.</p>
+        <div class="download">
+          <a class="btn" href="https://github.com/tdater/BLACKBOX-releases/releases/latest">Download APK</a>
+          <a class="btn ghost" href="#install">How to install</a>
+          <span class="meta">Android 10+ · Phone or Galaxy Z Fold</span>
+        </div>
+      </div>
+      <div class="fold" role="img" aria-label="BLACKBOX on an unfolded Galaxy Z Fold: project list on the left, the investigation workbench on the right">
+        <div class="screen">
+          <div class="pane">
+            <div class="m-top">BLACKBOX<div class="m-sub">FLIGHT RECORDER FOR DEBUGGING</div></div>
+            <div class="m-card" style="--c:var(--orange)"><span class="pill p-warn">SAMPLE</span><span class="pill p-info">LOCAL ONLY</span><b>KITT launcher</b><i>NEXT ▸ re-run on 1.4.1 in BLE mode</i></div>
+            <div class="m-card" style="--c:var(--cyan)"><span class="pill p-info">AI ALLOWED</span><b>Garage door relay</b><i>NEXT ▸ no next action recorded</i></div>
+            <div class="m-card" style="--c:var(--orange)"><span class="pill p-info">LOCAL ONLY</span><b>RetroTV pad input</b><i>NEXT ▸ test 8BitDo in keyboard mode</i></div>
+          </div>
+          <div class="pane">
+            <div><span class="pill p-warn">ACTIVE</span><span class="pill p-good">1 PASS</span><span class="pill p-bad">1 FAIL</span></div>
+            <div class="m-h">OBD values freeze after screen-off</div>
+            <div><span class="m-sub">QUESTION</span> Is the socket closed by the OS?</div>
+            <div class="m-next"><span class="m-sub" style="color:var(--orange)">NEXT ▸</span> Re-run on build 1.4.1, adapter in BLE mode</div>
+            <div class="m-tabs"><span>OVERVIEW</span><span>EVIDENCE</span><span>TESTS</span><span>CLAIMS</span><span>TIMELINE</span></div>
+            <div class="m-card" style="--c:var(--bad)"><span class="pill p-bad">✗ FAIL</span><b>Screen off 60 s · build 1.4.0</b><i>IOException: Broken pipe</i></div>
+            <div class="m-card" style="--c:var(--good)"><span class="pill p-good">✓ PASS</span><b>Screen off 60 s · build 1.4.1</b><i>Connection: unknown</i></div>
+            <div class="m-card" style="--c:var(--warn)"><span class="pill p-warn">INFERRED</span><b>Socket may be closed during screen-off</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="recorder" aria-hidden="true">
+      <div class="bar"><span class="rec">REC</span><span>CH1 · RUN TIMELINE</span><span id="clock">T+00:00</span></div>
+      <canvas id="trace" width="1080" height="130"></canvas>
+    </div>
+    <div class="readouts">
+      <div class="readout"><b>0</b><small>Accounts needed</small></div>
+      <div class="readout"><b>0</b><small>Internet permissions</small></div>
+      <div class="readout"><b>5</b><small>Ways runs can differ</small></div>
+      <div class="readout"><b>2</b><small>Panes when unfolded</small></div>
+    </div>
+  </header>
+
+  <nav aria-label="Sections">
+    <ul>
+      <li><a href="#loop">How it works</a></li>
+      <li><a href="#capture">Capture</a></li>
+      <li><a href="#runs">Test runs</a></li>
+      <li><a href="#compare">Compare</a></li>
+      <li><a href="#claims">Claims</a></li>
+      <li><a href="#resume">Resume</a></li>
+      <li><a href="#handoff">Fix requests</a></li>
+      <li><a href="#ai">On-device AI</a></li>
+      <li><a href="#fold">The Fold</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#whats-new">What's new</a></li>
+    </ul>
+  </nav>
+
+  <section id="loop">
+    <h2>How it works <span class="ch">THE LOOP</span></h2>
+    <p class="intro">A project is the thing you're fixing: an app, a car, a garage door opener. Each problem in it is an investigation, and every investigation runs the same loop.</p>
+    <div class="loop">
+      <div class="step"><b>Capture</b><small>Logs, screenshots, photos, voice notes and measurements, filed under the problem.</small></div>
+      <div class="step"><b>Plan</b><small>Write the test and the expected result before you run it.</small></div>
+      <div class="step"><b>Run</b><small>Record the build, the environment, what you changed and the outcome.</small></div>
+      <div class="step"><b>Compare</b><small>See what changed between a pass and a fail, including what nobody wrote down.</small></div>
+      <div class="step"><b>Resume</b><small>A one-screen briefing of where you are and what to do next.</small></div>
+      <div class="step"><b>Hand off</b><small>A clean fix request for another person or an AI chat, reviewed before it leaves.</small></div>
+    </div>
+  </section>
+
+  <section id="capture">
+    <h2>Capture everything <span class="ch">EVIDENCE</span></h2>
+    <p class="intro">Evidence is copied into BLACKBOX's own storage, so it survives you deleting the original screenshot or clearing Downloads.</p>
+    <div class="grid three">
+      <div class="card"><h3>Text and logs</h3><p class="muted">Paste a logcat dump, an error message or notes. Huge pastes are kept whole as an attached file instead of choking the app.</p></div>
+      <div class="card"><h3>Files and photos</h3><p class="muted">Import any file, or take a photo with the system camera. Share from any app straight into a project.</p></div>
+      <div class="card"><h3>Voice notes</h3><p class="muted">Record while your hands are busy under a dashboard. Recording survives folding and rotating the phone.</p></div>
+      <div class="card"><h3>Measurements</h3><p class="muted">Numbers with their units. Compare flags readings in different units as not comparable instead of lining up volts against amps.</p></div>
+      <div class="card"><h3>App event logs</h3><p class="muted">Your own apps can write a simple JSON event log. Import it and errors, warnings and marked events land on the timeline.</p></div>
+      <div class="card"><h3>Withdraw, don't delete</h3><p class="muted">Removing evidence deletes the file but keeps the record, and any claim that relied on it gets flagged.</p></div>
+    </div>
+  </section>
+
+  <section id="runs">
+    <h2>Test runs that keep their story <span class="ch">PLANS · OUTCOMES</span></h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Plans with revisions</h3>
+        <ul class="list">
+          <li>Steps, the expected result and what to hold constant, written down first.</li>
+          <li>Editing a plan creates a new revision. Every run keeps a frozen copy of the exact revision it used.</li>
+          <li>A fixed failure can join the <b>regression checklist</b>, so it gets re-checked after the next change.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Every run records</h3>
+        <ul class="list">
+          <li>The build, plus an environment snapshot: device, OS, connection, settings.</li>
+          <li>What you meant to change and what actually changed.</li>
+          <li>Outcome: <span class="st p-good">✓ PASS</span> <span class="st p-bad">✗ FAIL</span> <span class="st p-warn">◐ PARTIAL</span> <span class="st p-warn">? INCONCLUSIVE</span>, or abandoned.</li>
+          <li>Measurements, timestamped markers and deviations from the plan.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <h2>Compare runs honestly <span class="ch">UNKNOWN IS A VALUE</span></h2>
+    <p class="intro">Most debugging mistakes come from assuming something didn't change because nobody wrote it down. BLACKBOX never treats a gap as "same".</p>
+    <div class="card">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Field</th><th>Run 1 · FAIL</th><th>Run 2 · PASS</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Build</td><td class="mono">1.4.0</td><td class="mono">1.4.1</td><td><span class="st p-warn">≠ CHANGED</span></td></tr>
+            <tr><td>Android version</td><td class="mono">14</td><td class="mono">14</td><td><span class="st" style="color:var(--muted)">= SAME</span></td></tr>
+            <tr><td>Connection</td><td class="mono">Bluetooth Classic</td><td class="mono">not recorded</td><td><span class="st p-info">? UNKNOWN</span></td></tr>
+            <tr><td>Battery saver</td><td class="mono">on</td><td class="mono">—</td><td><span class="st p-info">∅ MISSING</span></td></tr>
+            <tr><td>Supply voltage</td><td class="mono">12.4 V</td><td class="mono">3.1 A</td><td><span class="st p-bad">⊘ NOT COMPARABLE</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Here the pass may be the fix, or it may be the adapter mode nobody recorded. BLACKBOX says so instead of letting you guess.</p>
+    </div>
+  </section>
+
+  <section id="claims">
+    <h2>Claims that know what they are <span class="ch">CLASSIFIED</span></h2>
+    <p class="intro">Every conclusion is labelled for what it is and cites the evidence and runs behind it. Accepting a claim marks it reviewed, not proven.</p>
+    <div class="claims">
+      <div class="claim"><span class="st p-info">OBSERVED</span><small>You saw or measured it. "RPM froze after screen-off on build 1.4.0."</small></div>
+      <div class="claim"><span class="st p-warn">INFERRED</span><small>A reasonable guess, labelled as one. "The OS may close the socket."</small></div>
+      <div class="claim"><span class="st p-good">SUPPORTED BY TEST</span><small>Backed by a run. "1.4.1 keeps telemetry alive through 60 s off."</small></div>
+      <div class="claim"><span class="st" style="color:var(--muted)">UNKNOWN</span><small>Not established yet, and nobody pretends otherwise.</small></div>
+    </div>
+  </section>
+
+  <section id="resume">
+    <h2>Pick up where you left off <span class="ch">RESUME</span></h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Resume capsules</h3>
+        <p class="muted">One screen generated from your records: the current failure, the last run, what's known, what's still unknown and the next action. Saved capsules never get rewritten. When records change afterwards, the capsule is marked <span class="st p-warn">STALE</span> so you know to regenerate it.</p>
+      </div>
+      <div class="card">
+        <h3>Search and timeline</h3>
+        <p class="muted">Search every project for "broken pipe" or a build number and jump straight to the run, plan or evidence. Each investigation keeps a timeline of everything that happened, in order.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="handoff">
+    <h2>Fix requests <span class="ch">HANDOFF</span></h2>
+    <p class="intro">When you need help, BLACKBOX writes the bug report you wish people sent you. Pick which evidence goes in, review anything that looks sensitive, edit the Markdown, then copy, save or share it. Nothing is sent automatically.</p>
+    <pre class="md"><span class="h">## OBD values freeze after screen-off</span>
+<span class="k">Expected:</span> telemetry resumes after screen-on
+<span class="k">Actual:</span>   RPM and speed freeze; log ends in <span class="r">IOException: Broken pipe</span>
+
+<span class="h">### Runs</span>
+- ✗ FAIL  Screen off 60 s · build 1.4.0 · Bluetooth Classic
+- ✓ PASS  Screen off 60 s · build 1.4.1 · connection <span class="k">not recorded</span>
+
+<span class="h">### Known gaps</span>
+- Adapter mode differs or is unknown between the runs</pre>
+  </section>
+
+  <section id="ai">
+    <h2>On-device AI <span class="ch">OPTIONAL · OFF BY DEFAULT</span></h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Runs on the phone</h3>
+        <ul class="list">
+          <li>Import a LiteRT-LM model file (for example Gemma 3 1B). It runs on the CPU. No key, no account, no bill.</li>
+          <li>Ask it to suggest next tests, summarize what's known, or find gaps and contradictions.</li>
+          <li>You tick exactly which records it reads.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Kept on a short leash</h3>
+        <ul class="list">
+          <li>Projects marked LOCAL ONLY are refused, even by the on-device model.</li>
+          <li>Every answer must cite the records it used. Answers citing records it wasn't given are thrown out.</li>
+          <li>Anything you keep is saved as an INFERRED claim, authored by "ai". It's still a guess until you test it.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="fold">
+    <h2>Built for the Fold <span class="ch">ADAPTIVE</span></h2>
+    <div class="grid three">
+      <div class="card"><h3>Folded</h3><p class="muted">One column on the cover screen, made for capturing quickly with one hand.</p></div>
+      <div class="card"><h3>Unfolded</h3><p class="muted">Two panes: your investigations on one side, the workbench on the other.</p></div>
+      <div class="card"><h3>Half open</h3><p class="muted">On the run screen, tabletop posture splits controls from the record, so the phone props itself up on the bench.</p></div>
+    </div>
+    <p class="intro" style="margin-top:14px">Folding, unfolding or rotating mid-run never loses your place, duplicates a run or restarts a recording. Normal phones get the same app in one or two columns depending on width.</p>
+  </section>
+
+  <section id="privacy">
+    <h2>Privacy <span class="ch">LOCAL ONLY</span></h2>
+    <div class="grid">
+      <div class="card">
+        <ul class="list">
+          <li>No internet permission at all. The app cannot send anything anywhere.</li>
+          <li>No account, analytics, ads or telemetry.</li>
+          <li>Android cloud backup is turned off for BLACKBOX data.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <ul class="list">
+          <li>Back up with <b>Export project archive</b>: a .zip of every record and attachment, with checksums.</li>
+          <li>Importing an archive always creates a new project. It can never overwrite existing work.</li>
+          <li>Uninstalling deletes everything that hasn't been exported.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install <span class="ch">SIDELOAD</span></h2>
+    <div class="grid">
+      <div class="card">
+        <ol class="steps">
+          <li>On the phone, open the <a href="https://github.com/tdater/BLACKBOX-releases/releases/latest">latest release</a> and download the APK under <i>Assets</i>.</li>
+          <li>Open the file. When Android asks, allow your browser or file manager to install unknown apps.</li>
+          <li>Tap <b>Install</b>, then open BLACKBOX and load the labeled sample project to look around.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Requirements</h3>
+        <p class="muted">Android 10 or newer. Designed for the Galaxy Z Fold, and works on any phone. The on-device AI is optional and needs a model file of roughly 0.5–4 GB plus patience.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="whats-new">
+    <h2>What's new <span class="ch">0.1.0</span></h2>
+    <div class="card">
+      <ul class="list">
+        <li>First release: projects, investigations, evidence capture, test plans and runs, compare, resume capsules, claims and fix requests.</li>
+        <li>Regression checklist, search across every project, and app event log import.</li>
+        <li>Optional on-device AI with a model you import.</li>
+        <li>In-app guide with a worked example and FAQ.</li>
+        <li>The flight-recorder look: orange, cyan and carbon.</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="note">
+    <h2>The fine print</h2>
+    <p class="muted">None. This is a personal project shared as-is, with no warranty and no support, and bug reports aren't taken. BLACKBOX keeps records; it doesn't guarantee they're right, and it doesn't fix anything for you.</p>
+  </div>
+
+  <footer>
+    <div class="hazard" aria-hidden="true"></div>
+    <span>Copyright © 2026 travisdater. All rights reserved. You may download and use the app; the source code is not published.</span>
+  </footer>
+</main>
+
+<script>
+  // Strip-chart recorder: a scrolling trace with event markers, like a flight data recorder.
+  (function () {
+    var c = document.getElementById('trace'), clock = document.getElementById('clock');
+    if (!c || !c.getContext) return;
+    var g = c.getContext('2d'), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var events = [
+      { at: 140, label: 'CAPTURE', col: '#3fe0d0' }, { at: 360, label: 'RUN 1 ✗ FAIL', col: '#ff5a5f', spike: 1 },
+      { at: 600, label: 'CHANGE BUILD', col: '#ffc23d' }, { at: 840, label: 'RUN 2 ✓ PASS', col: '#4be38a' }
+    ];
+    var span = 1080, t = 0;
+    function fit() { var r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1; c.width = Math.max(1, r.width * d); c.height = 130 * d; g.setTransform(c.width / span, 0, 0, d, 0, 0); }
+    function y(x) {
+      var v = Math.sin(x * 0.045) * 6 + Math.sin(x * 0.13) * 3;
+      for (var i = 0; i < events.length; i++) { var dx = x - events[i].at; if (Math.abs(dx) < 18) v += (events[i].spike ? -38 : -18) * Math.cos(dx / 18 * Math.PI / 2) * (dx < 0 ? 1 : -0.6); }
+      return 72 + v;
+    }
+    function draw() {
+      g.clearRect(0, 0, span, 130);
+      g.strokeStyle = 'rgba(255,255,255,0.06)'; g.lineWidth = 1;
+      for (var gx = 0; gx < span; gx += 30) { g.beginPath(); g.moveTo(gx - (t % 30), 0); g.lineTo(gx - (t % 30), 130); g.stroke(); }
+      var head = (t % (span + 200));
+      g.lineWidth = 2; g.lineJoin = 'round';
+      g.strokeStyle = 'rgba(255,107,26,0.35)'; g.beginPath();
+      for (var x = 0; x <= span; x += 3) { x ? g.lineTo(x, y(x)) : g.moveTo(x, y(x)); } g.stroke();
+      var grad = g.createLinearGradient(head - 220, 0, head, 0); grad.addColorStop(0, 'rgba(255,154,61,0)'); grad.addColorStop(1, '#ff9a3d');
+      g.strokeStyle = grad; g.lineWidth = 3; g.beginPath();
+      for (var x2 = Math.max(0, head - 220); x2 <= Math.min(span, head); x2 += 3) { x2 === Math.max(0, head - 220) ? g.moveTo(x2, y(x2)) : g.lineTo(x2, y(x2)); } g.stroke();
+      g.font = '600 11px "IBM Plex Mono", monospace';
+      events.forEach(function (e) {
+        var on = head >= e.at || reduce;
+        g.globalAlpha = on ? 1 : 0.25; g.strokeStyle = e.col; g.setLineDash([3, 4]); g.lineWidth = 1;
+        g.beginPath(); g.moveTo(e.at, 20); g.lineTo(e.at, 118); g.stroke(); g.setLineDash([]);
+        g.fillStyle = e.col; g.fillText(e.label, Math.min(e.at + 6, span - 110), 16); g.globalAlpha = 1;
+      });
+      var secs = Math.floor(Math.min(head, span) / 12); clock.textContent = 'T+' + String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+    }
+    fit(); window.addEventListener('resize', function () { fit(); draw(); });
+    if (reduce) { t = span; draw(); return; }
+    (function loop() { t += 4; draw(); requestAnimationFrame(loop); })();
+  })();
+</script>
+</body>
+</html>
