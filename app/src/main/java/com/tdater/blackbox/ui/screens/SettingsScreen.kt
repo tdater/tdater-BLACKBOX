@@ -35,7 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun SettingsScreen(vm: MainViewModel, back: () -> Unit) {
+fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit) {
     val ctx = LocalContext.current
     var ai by remember { mutableStateOf(vm.settings.aiEnabled) }
     var used by remember { mutableLongStateOf(-1L) }
@@ -68,6 +68,8 @@ fun SettingsScreen(vm: MainViewModel, back: () -> Unit) {
                 Text("Back up a project with ⋮ → Export project archive. Import from the Projects screen; imports always become a new project.",
                     style = MaterialTheme.typography.bodySmall)
             }
+            SectionHeader("Help")
+            OutlinedButton(onClick = openHelp) { Text("Guide, examples and FAQ") }
             SectionHeader("Diagnostics")
             OutlinedButton(onClick = {
                 vm.launch {

@@ -41,6 +41,11 @@ class SmokeFlowTest {
     fun sampleWorkbenchSearchAndRegression() {
         waitText(LOAD_SAMPLE)
         shot("01-projects-empty")
+        rule.onNodeWithContentDescription("Guide and FAQ").performClick()
+        waitText("Quick start (5 minutes)")
+        shot("02-guide")
+        Espresso.pressBack()
+        waitText(LOAD_SAMPLE)
         rule.onNodeWithText(LOAD_SAMPLE).performClick()
 
         waitText(INVESTIGATION)

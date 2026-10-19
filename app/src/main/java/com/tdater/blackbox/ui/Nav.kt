@@ -13,6 +13,7 @@ import com.tdater.blackbox.ui.screens.CompareScreen
 import com.tdater.blackbox.ui.screens.ConfigScreen
 import com.tdater.blackbox.ui.screens.EvidenceScreen
 import com.tdater.blackbox.ui.screens.HandoffScreen
+import com.tdater.blackbox.ui.screens.HelpScreen
 import com.tdater.blackbox.ui.screens.PlanEditorScreen
 import com.tdater.blackbox.ui.screens.ProjectWorkspace
 import com.tdater.blackbox.ui.screens.ProjectsScreen
@@ -27,6 +28,7 @@ object Routes {
     const val PROJECTS = "projects"
     const val SETTINGS = "settings"
     const val SEARCH = "search"
+    const val HELP = "help"
     fun project(pid: String, iid: String? = null) = "project/$pid" + (iid?.let { "?iid=$it" } ?: "")
     fun capture(pid: String, iid: String?, runId: String? = null) =
         "capture/$pid?iid=${iid.orEmpty()}&run=${runId.orEmpty()}"
@@ -48,9 +50,10 @@ fun BlackboxNav(vm: MainViewModel, nav: NavHostController = rememberNavControlle
     NavHost(nav, startDestination = Routes.PROJECTS) {
         composable(Routes.PROJECTS) {
             ProjectsScreen(vm, open = { nav.navigate(Routes.project(it)) }, openSettings = { nav.navigate(Routes.SETTINGS) },
-                openSearch = { nav.navigate(Routes.SEARCH) })
+                openSearch = { nav.navigate(Routes.SEARCH) }, openHelp = { nav.navigate(Routes.HELP) })
         }
-        composable(Routes.SETTINGS) { SettingsScreen(vm, back) }
+        composable(Routes.SETTINGS) { SettingsScreen(vm, back, openHelp = { nav.navigate(Routes.HELP) }) }
+        composable(Routes.HELP) { HelpScreen(back) }
         composable(Routes.SEARCH) {
             SearchScreen(vm, back, openHit = { h ->
                 nav.navigate(when (h.kind) {

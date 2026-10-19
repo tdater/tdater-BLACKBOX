@@ -25,6 +25,9 @@ Status: first vertical slice (v0.1.0, debug). See [docs/PLAN.md](docs/PLAN.md) f
 
 Want to poke around first? On an empty install, tap **Load labeled sample (synthetic data)**.
 
+## Help inside the app
+Tap the ⓘ icon on Projects (or Settings → Guide) for what BLACKBOX is for, step-by-step instructions, a worked example and an FAQ. It's offline like everything else; the text lives in `ui/screens/HelpScreen.kt` (`HelpContent`).
+
 ## Build
 ```
 ./gradlew :core:test                      # pure-Kotlin domain tests, no Android SDK needed

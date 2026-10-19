@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -56,7 +57,7 @@ import com.tdater.blackbox.ui.components.fmtTime
 import java.io.File
 
 @Composable
-fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -> Unit, openSearch: () -> Unit) {
+fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -> Unit, openSearch: () -> Unit, openHelp: () -> Unit) {
     val projects by remember { vm.repo.observeProjects() }.collectAsStateWithLifecycle(initialValue = null)
     val investigations by remember { vm.repo.observeAllInvestigations() }.collectAsStateWithLifecycle(initialValue = emptyList())
     var creating by rememberSaveable { mutableStateOf(false) }
@@ -82,6 +83,7 @@ fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -
     Scaffold(
         topBar = {
             BbTopBar("BLACKBOX", "Projects remember what happened", onBack = null) {
+                IconButton(onClick = openHelp) { Icon(Icons.Default.Info, contentDescription = "Guide and FAQ") }
                 IconButton(onClick = openSearch) { Icon(Icons.Default.Search, contentDescription = "Search records") }
                 IconButton(onClick = openSettings) { Icon(Icons.Default.Settings, contentDescription = "Settings") }
             }
@@ -112,6 +114,7 @@ fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -
                     TextButton(onClick = { importArchive.launch(arrayOf("application/zip", "application/octet-stream")) }) {
                         Text("Import project archive…")
                     }
+                    TextButton(onClick = openHelp) { Text("New here? Read the guide") }
                 }
                 else -> LazyVerticalGrid(
                     columns = GridCells.Adaptive(320.dp),
