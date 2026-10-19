@@ -33,7 +33,7 @@ Tap the ⓘ icon on Projects (or Settings → Guide) for what BLACKBOX is for, s
 ./gradlew :core:test                      # pure-Kotlin domain tests, no Android SDK needed
 ./gradlew :app:testDebugUnitTest :app:assembleDebug   # needs an Android SDK (API 35)
 ```
-JDK 17+, AGP 8.7.3, Kotlin 2.0.21, Compose BOM 2024.12.01, Room 2.6.1. minSdk 29, target 35.
+JDK 17+, AGP 8.7.3, Kotlin 2.2.21, Compose BOM 2024.12.01, Room 2.7.2. minSdk 29, target 35.
 
 ## What it is not
 Not a chat app, not a recorder that runs in the background, not a remote control for other apps,
