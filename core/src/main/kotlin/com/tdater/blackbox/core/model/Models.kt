@@ -56,6 +56,10 @@ data class Project(
     val labels: List<String> = emptyList(),
     /** True for clearly-labelled synthetic demo data. Never mixed into real records. */
     val isSample: Boolean = false,
+    /** Which [com.tdater.blackbox.core.templates.ProjectTemplates] entry the project started from. */
+    val templateId: String = "custom",
+    /** Condition fields this project records in snapshots (seeded from the template, user-editable). */
+    val fieldKeys: List<String> = emptyList(),
 )
 
 @Serializable
@@ -74,6 +78,9 @@ data class Investigation(
     val updatedAt: Long,
     /** Incremented whenever this investigation or a record linked to it changes. */
     val revision: Long = 1,
+    /** When the user asked to be reminded to come back to this (epoch ms), if ever. */
+    val followUpAt: Long? = null,
+    val followUpNote: String = "",
 )
 
 @Serializable
@@ -292,6 +299,24 @@ data class HandoffDraft(
     val format: String = "markdown",
     val content: String,
     val privacyReview: HandoffReview = HandoffReview.NOT_REVIEWED,
+)
+
+/**
+ * A reusable checklist saved from a plan that worked (an SOP). Lives outside any project; using it
+ * in an investigation copies it into a normal [TestPlan], so runs stay frozen and comparable.
+ */
+@Serializable
+data class Procedure(
+    val id: String,
+    val title: String,
+    val description: String = "",
+    val steps: List<String> = emptyList(),
+    val expectedResult: String = "",
+    val templateId: String = "custom",
+    val sourceProjectId: String? = null,
+    val sourcePlanId: String? = null,
+    val createdAt: Long,
+    val updatedAt: Long,
 )
 
 /** Every record belonging to one project. Unit of archive export/import. */
