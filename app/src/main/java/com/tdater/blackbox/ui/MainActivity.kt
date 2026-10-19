@@ -21,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import com.tdater.blackbox.ui.components.Backdrop
 import com.tdater.blackbox.ui.theme.BlackboxTheme
 
 /** Content handed to BLACKBOX from another app's share sheet, waiting for a project choice. */
@@ -39,10 +41,12 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(vm.message) {
                     vm.message?.let { snack.showSnackbar(it); vm.message = null }
                 }
-                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Box(Modifier.fillMaxSize().safeDrawingPadding()) {
-                        BlackboxNav(vm)
-                        SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
+                Backdrop {
+                    Surface(Modifier.fillMaxSize(), color = Color.Transparent, contentColor = MaterialTheme.colorScheme.onBackground) {
+                        Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                            BlackboxNav(vm)
+                            SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
+                        }
                     }
                 }
             }

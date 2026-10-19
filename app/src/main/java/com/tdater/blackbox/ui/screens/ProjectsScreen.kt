@@ -2,7 +2,16 @@ package com.tdater.blackbox.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import com.tdater.blackbox.ui.components.HazardStripe
+import com.tdater.blackbox.ui.components.TraceGlyph
+import com.tdater.blackbox.ui.theme.BbColors
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -82,7 +91,7 @@ fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -
 
     Scaffold(
         topBar = {
-            BbTopBar("BLACKBOX", "Projects remember what happened", onBack = null) {
+            BbTopBar("BLACKBOX", "Flight recorder for debugging", onBack = null) {
                 IconButton(onClick = openHelp) { Icon(Icons.Default.Info, contentDescription = "Guide and FAQ") }
                 IconButton(onClick = openSearch) { Icon(Icons.Default.Search, contentDescription = "Search records") }
                 IconButton(onClick = openSettings) { Icon(Icons.Default.Settings, contentDescription = "Settings") }
@@ -122,6 +131,9 @@ fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                        HeroHeader(list.size, investigations.count { it.status != InvestigationStatus.RESOLVED && it.status != InvestigationStatus.ARCHIVED })
+                    }
                     items(list, key = { it.id }) { p ->
                         ProjectCard(p, investigations.filter { it.projectId == p.id }) {
                             val share = vm.pendingShare
@@ -158,20 +170,65 @@ fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -
 private fun ProjectCard(p: Project, invs: List<Investigation>, onClick: () -> Unit) {
     val active = invs.filter { it.status != InvestigationStatus.RESOLVED && it.status != InvestigationStatus.ARCHIVED }
     val next = active.firstOrNull { it.nextAction.isNotBlank() }
-    InfoCard(Modifier.clickable(onClick = onClick)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    val accent = when {
+        p.isSample -> BbColors.Warn
+        active.isNotEmpty() -> BbColors.Orange
+        else -> BbColors.Cyan
+    }
+    InfoCard(Modifier.clickable(onClick = onClick), accent = accent) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
             if (p.isSample) Tag("SAMPLE · SYNTHETIC", Tone.WARN)
             Tag(if (p.privacyPolicy == PrivacyPolicy.LOCAL_ONLY) "LOCAL ONLY" else "AI ALLOWED",
                 if (p.privacyPolicy == PrivacyPolicy.LOCAL_ONLY) Tone.NEUTRAL else Tone.INFO)
             Tag(p.status.name)
         }
-        Text(p.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(p.title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(start = 12.dp)) {
+                Text("${active.size}", style = MaterialTheme.typography.headlineMedium, color = accent)
+                Text("OPEN", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         if (p.objective.isNotBlank()) Text(p.objective, style = MaterialTheme.typography.bodySmall, maxLines = 2,
             overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(4.dp))
-        Text("${active.size} open investigation(s) · updated ${fmtTime(p.updatedAt)}", style = MaterialTheme.typography.labelMedium)
-        Text("Next: " + (next?.nextAction ?: "no next action recorded"), style = MaterialTheme.typography.bodySmall,
-            maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text("${active.size} open investigation(s) · updated ${fmtTime(p.updatedAt)}", style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.Top) {
+            Text("NEXT ▸ ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(next?.nextAction ?: "no next action recorded", style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun HeroHeader(projects: Int, open: Int) {
+    Column(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+            TraceGlyph(size = 64.dp)
+            Column(Modifier.padding(start = 12.dp).weight(1f)) {
+                Text("Your projects remember", style = MaterialTheme.typography.headlineSmall)
+                Text("what happened, what changed, what's next", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+            StatChip("$projects", "PROJECTS", BbColors.Cyan)
+            StatChip("$open", "OPEN INVESTIGATIONS", BbColors.Orange)
+        }
+        HazardStripe(Modifier.padding(top = 6.dp).clip(MaterialTheme.shapes.extraSmall))
+    }
+}
+
+@Composable
+private fun StatChip(value: String, label: String, color: androidx.compose.ui.graphics.Color) {
+    Row(verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.background(color.copy(alpha = 0.12f), MaterialTheme.shapes.small)
+            .border(1.dp, color.copy(alpha = 0.4f), MaterialTheme.shapes.small).padding(horizontal = 12.dp, vertical = 6.dp)) {
+        Text(value, style = MaterialTheme.typography.titleLarge, color = color)
+        Text("  $label", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

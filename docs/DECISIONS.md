@@ -16,3 +16,4 @@
 | Debug `applicationIdSuffix .debug` | Coexists with a future signed release. No production signing key invented. |
 | APK built in GitHub Actions | The Claude cloud sandbox blocks dl.google.com (Google Maven + SDK). `:core` builds anywhere. |
 | minSdk 29 | Covers any phone Travis would test on; avoids legacy storage paths. |
+| "Flight recorder" visual identity (international orange + instrument cyan on carbon, mono labels, hazard stripe, animated trace mark) | Travis asked for a less plain UI. Status still always has a text label, never colour alone. Fonts are system fonts (no downloadable fonts: no network). |

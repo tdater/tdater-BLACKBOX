@@ -1,4 +1,5 @@
 <resources>
-    <color name="bb_background">#FF0E0F11</color>
-    <color name="bb_accent">#FFFFB547</color>
+    <color name="bb_background">#FF0B0C12</color>
+    <color name="bb_accent">#FFFF6B1A</color>
+    <color name="bb_icon_bg">#FFFF6B1A</color>
 </resources>

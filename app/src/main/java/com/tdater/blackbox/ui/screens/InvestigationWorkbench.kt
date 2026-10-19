@@ -1,6 +1,10 @@
 package com.tdater.blackbox.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import com.tdater.blackbox.ui.theme.BbColors
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,6 +56,7 @@ import com.tdater.blackbox.ui.components.Tag
 import com.tdater.blackbox.ui.components.Tone
 import com.tdater.blackbox.ui.components.claimLabel
 import com.tdater.blackbox.ui.components.claimTone
+import com.tdater.blackbox.ui.components.toneColor
 import com.tdater.blackbox.ui.components.fmtTime
 import com.tdater.blackbox.ui.components.outcomeLabel
 import com.tdater.blackbox.ui.components.outcomeTone
@@ -68,15 +73,26 @@ fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigati
     val pid = b.project.id
 
     Column(modifier.fillMaxSize()) {
-        Column(Modifier.padding(horizontal = 12.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
-                Tag(inv.status.name)
-                Tag("rev ${inv.revision}")
+        val runs = b.runs.filter { it.investigationId == inv.id }
+        Column(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(BbColors.Orange.copy(alpha = 0.14f), Color.Transparent)))
+            .padding(horizontal = 12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 10.dp).horizontalScroll(rememberScrollState())) {
+                Tag(inv.status.name, if (inv.status == InvestigationStatus.RESOLVED) Tone.GOOD else Tone.WARN)
+                Tag("REV ${inv.revision}")
+                Tag("${runs.count { it.outcome == RunOutcome.PASS }} PASS", Tone.GOOD)
+                Tag("${runs.count { it.outcome == RunOutcome.FAIL }} FAIL", Tone.BAD)
             }
-            Text(inv.title, style = MaterialTheme.typography.titleLarge)
-            Text("Question: " + inv.currentQuestion.ifBlank { "none recorded" }, style = MaterialTheme.typography.bodyMedium)
-            Text("Next action: " + inv.nextAction.ifBlank { "none recorded" }, style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary)
+            Text(inv.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 6.dp))
+            Row(Modifier.padding(top = 4.dp)) {
+                Text("QUESTION  ", style = MaterialTheme.typography.labelMedium, color = BbColors.Cyan, modifier = Modifier.padding(top = 3.dp))
+                Text(inv.currentQuestion.ifBlank { "none recorded" }, style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(Modifier.padding(top = 2.dp)) {
+                Text("NEXT ▸    ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 3.dp))
+                Text(inv.nextAction.ifBlank { "none recorded" }, style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary)
+            }
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 8.dp)) {
                 Button(onClick = { nav.navigate(Routes.capture(pid, inv.id)) }, modifier = Modifier.padding(end = 8.dp)) { Text("Capture") }
                 OutlinedAction("Edit") { editing = true }
@@ -87,7 +103,8 @@ fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigati
                 OutlinedAction("Ask on-device AI") { nav.navigate(Routes.ai(pid, inv.id)) }
             }
         }
-        ScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp) {
+        ScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp, containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.primary) {
             TABS.forEachIndexed { i, t -> Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t) }) }
         }
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
@@ -144,7 +161,7 @@ private fun LazyListScope.overview(b: ProjectBundle, inv: Investigation, nav: Na
         if (open.isNotEmpty()) {
             SectionHeader("Unfinished runs")
             open.forEach { r ->
-                InfoCard(Modifier.padding(vertical = 4.dp).clickable { nav.navigate(Routes.run(b.project.id, r.id)) }) {
+                InfoCard(Modifier.padding(vertical = 4.dp).clickable { nav.navigate(Routes.run(b.project.id, r.id)) }, accent = toneColor(outcomeTone(r.outcome))) {
                     Tag(outcomeLabel(r.outcome), outcomeTone(r.outcome))
                     Text("${r.planSnapshot.title} · started ${fmtTime(r.startedAt)} — tap to resume")
                 }
@@ -209,7 +226,7 @@ private fun LazyListScope.testsTab(vm: MainViewModel, b: ProjectBundle, inv: Inv
     val runs = b.runs.filter { it.investigationId == inv.id }.sortedByDescending { it.startedAt }
     item { SectionHeader("Runs (${runs.size})") }
     items(runs, key = { it.id }) { r ->
-        InfoCard(Modifier.padding(vertical = 4.dp).clickable { nav.navigate(Routes.run(b.project.id, r.id)) }) {
+        InfoCard(Modifier.padding(vertical = 4.dp).clickable { nav.navigate(Routes.run(b.project.id, r.id)) }, accent = toneColor(outcomeTone(r.outcome))) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Tag(outcomeLabel(r.outcome), outcomeTone(r.outcome))
                 if (inv.knownGoodReferenceId == r.id) Tag("★ KNOWN-GOOD", Tone.GOOD)
@@ -230,7 +247,7 @@ private fun LazyListScope.claimsTab(vm: MainViewModel, b: ProjectBundle, inv: In
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     items(claims, key = { it.id }) { c ->
-        InfoCard(Modifier.padding(vertical = 4.dp)) {
+        InfoCard(Modifier.padding(vertical = 4.dp), accent = toneColor(claimTone(c.classification))) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Tag(claimLabel(c.classification), claimTone(c.classification))
                 Tag(c.reviewStatus.name, if (c.reviewStatus == ReviewStatus.REJECTED) Tone.BAD else Tone.NEUTRAL)
