@@ -8,7 +8,8 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Queue instead of cancelling so long emulator runs finish and report.
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -55,14 +56,23 @@ jobs:
           if-no-files-found: ignore
 
   emulator:
-    name: Emulator smoke (${{ matrix.profile }})
+    name: Emulator smoke (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        # Compact phone, and the Pixel Fold inner (unfolded) display.
-        profile: [ pixel_6, pixel_fold ]
+        # avdmanager on the runner has no pixel_fold profile, so the unfolded Fold inner display
+        # (2208x1840 @ 420dpi, ~841dp wide = expanded) is simulated by resizing a pixel_6 AVD.
+        include:
+          - name: phone
+            profile: pixel_6
+            wm_size: ""
+            density: ""
+          - name: fold-unfolded
+            profile: pixel_6
+            wm_size: 2208x1840
+            density: "420"
     steps:
       - uses: actions/checkout@v4
 
@@ -91,13 +101,15 @@ jobs:
           profile: ${{ matrix.profile }}
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
-          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace; status=$?; adb pull /data/local/tmp/blackbox-shots screenshots || true; adb logcat -d > logcat.txt || true; exit $status
+          script: |
+            if [ -n "${{ matrix.wm_size }}" ]; then adb shell wm size ${{ matrix.wm_size }} && adb shell wm density ${{ matrix.density }}; fi
+            ./gradlew :app:connectedDebugAndroidTest --stacktrace; status=$?; adb pull /data/local/tmp/blackbox-shots screenshots || true; adb logcat -d > logcat.txt || true; exit $status
 
       - name: Upload screenshots and reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: emulator-${{ matrix.profile }}
+          name: emulator-${{ matrix.name }}
           path: |
             screenshots/
             logcat.txt
