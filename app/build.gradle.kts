@@ -19,6 +19,8 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // 64-bit phones plus the x86_64 emulator; drops 32-bit copies of the AI and ML Kit native libraries.
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
     }
 
     signingConfigs {
@@ -87,6 +89,16 @@ dependencies {
     implementation("androidx.compose.material3.adaptive:adaptive:1.0.0")
     implementation("androidx.window:window:1.3.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
+
+    // Text and barcode reading on still photos; bundled models, run on the phone, no Play Services download.
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
+    // Encrypted records database (key wrapped by Android Keystore) and the optional fingerprint / screen-lock gate.
+    implementation("net.zetetic:sqlcipher-android:4.6.1")
+    implementation("androidx.sqlite:sqlite:2.4.0")
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // On-device LLM runtime. Runs locally; the app still has no INTERNET permission.

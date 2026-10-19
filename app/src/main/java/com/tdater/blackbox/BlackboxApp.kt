@@ -6,12 +6,13 @@ import com.tdater.blackbox.ai.ModelStore
 import com.tdater.blackbox.data.AttachmentStore
 import com.tdater.blackbox.data.BlackboxRepository
 import com.tdater.blackbox.data.db.BlackboxDatabase
+import com.tdater.blackbox.data.db.DbEncryption
 import com.tdater.blackbox.ui.components.Wording
 import com.tdater.blackbox.ui.theme.ThemeChoice
 import java.io.File
 
 class BlackboxApp : Application() {
-    val database: BlackboxDatabase by lazy { BlackboxDatabase.build(this) }
+    val database: BlackboxDatabase by lazy { BlackboxDatabase.build(this, DbEncryption.factory(this, BlackboxDatabase.NAME)) }
     val repository: BlackboxRepository by lazy {
         BlackboxRepository(database, AttachmentStore(File(filesDir, "attachments")))
     }

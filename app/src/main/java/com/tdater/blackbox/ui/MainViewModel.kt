@@ -56,6 +56,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun updateWording(w: Wording) { wording = w; settings.wording = w }
 
     /** A capture mode requested from the widget or quick-settings tile, waiting for navigation. */
+    /** App lock: starts locked on a cold start when enabled; the activity re-locks after time in the background. */
+    var locked by mutableStateOf(settings.appLock)
+    var hiddenAt = 0L
     var pendingQuick by mutableStateOf<String?>(null)
     /** A project/investigation to open (from a reminder notification). */
     var pendingOpen by mutableStateOf<Pair<String, String?>?>(null)

@@ -44,7 +44,10 @@ import com.tdater.blackbox.ui.components.InfoCard
 import com.tdater.blackbox.ui.components.SectionHeader
 import com.tdater.blackbox.ui.components.Wording
 import com.tdater.blackbox.ui.components.fmtTime
+import com.tdater.blackbox.system.AppLock
 import com.tdater.blackbox.system.Backup
+import com.tdater.blackbox.data.db.BlackboxDatabase
+import com.tdater.blackbox.data.db.DbEncryption
 import com.tdater.blackbox.ui.theme.ThemeChoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,6 +57,7 @@ import kotlinx.coroutines.withContext
 fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit, openProject: (String) -> Unit = {}) {
     val ctx = LocalContext.current
     var hide by remember { mutableStateOf(vm.settings.hideInRecents) }
+    var lock by remember { mutableStateOf(vm.settings.appLock) }
     var tree by remember { mutableStateOf(vm.settings.backupTree) }
     var auto by remember { mutableStateOf(vm.settings.autoBackup) }
     var lastBackup by remember { mutableLongStateOf(vm.settings.lastBackupAt) }
@@ -176,6 +180,19 @@ fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit, op
             }
             SectionHeader("Privacy & storage")
             InfoCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Lock BLACKBOX")
+                        Text("Ask for fingerprint, face or your screen lock when opening, and after ${AppLock.RELOCK_AFTER_MS / 1000}s away.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = lock, onCheckedChange = {
+                        if (it && !AppLock.canUse(ctx)) vm.message = "Set up a screen lock (PIN, pattern or fingerprint) in Android settings first."
+                        else { lock = it; vm.settings.appLock = it }
+                    })
+                }
+                Text(if (DbEncryption.isEncrypted(ctx, BlackboxDatabase.NAME)) "Records database: encrypted (SQLCipher, key held by Android Keystore)."
+                    else "Records database: not encrypted on this phone.", style = MaterialTheme.typography.bodySmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Hide in recent apps")

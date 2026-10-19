@@ -34,6 +34,12 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      - name: APK must not request INTERNET
+        run: |
+          AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump permissions app/build/outputs/apk/debug/app-debug.apk | tee perms.txt
+          if grep -q "android.permission.INTERNET" perms.txt; then echo "::error::INTERNET permission found in APK"; exit 1; fi
+
       - name: Lint
         run: ./gradlew :app:lintDebug
         continue-on-error: true
