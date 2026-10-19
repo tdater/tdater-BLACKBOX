@@ -10,7 +10,7 @@ Legend: ✅ implemented + automated test · 🟡 implemented, needs device verif
 | 3 | Evidence: text/log/measurement, file import, photo (system camera), voice (MediaRecorder) | 🟡 |
 | 4 | Fold: compact/two-pane workspace, tabletop split on run screen, saved state | 🟡 |
 | 5 | Compare, resume capsules, handoff, archive round-trip | ✅ core tests · 🟡 UI |
-| 6 | Regression checklist, search/filter, polish | ⬜ (regression flag on plans exists) |
+| 6 | Regression checklist, search/filter, polish | 🟨 search + regression checklist built, core-tested; polish pending |
 | 7 | Optional AI provider | ⬜ gateway + policy tests only, no provider |
 | 8 | Release handoff (signed build) | ⬜ no production key by design |
 
@@ -32,5 +32,5 @@ Legend: ✅ implemented + automated test · 🟡 implemented, needs device verif
 
 ## Next
 1. Device pass on the Fold (checklist in TESTING.md), fix what breaks.
-2. Search/filter across records; regression checklist view built from plans flagged as regression.
+2. ~~Search/filter across records; regression checklist view.~~ Done (`core/search`, `core/regression`, Search + Regression screens). Fail-then-pass only *suggests* a regression check; nothing is auto-added.
 3. Owned-app event import format (JSON) for KITT/RetroTV instrumentation.

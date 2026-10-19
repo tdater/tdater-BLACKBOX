@@ -109,6 +109,7 @@ private fun ProjectMenu(vm: MainViewModel, b: ProjectBundle, nav: NavHostControl
     IconButton(onClick = { open = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Project actions") }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
         DropdownMenuItem(text = { Text("Builds & environments") }, onClick = { open = false; nav.navigate(Routes.config(b.project.id)) })
+        DropdownMenuItem(text = { Text("Regression checklist") }, onClick = { open = false; nav.navigate(Routes.regression(b.project.id)) })
         DropdownMenuItem(text = { Text("Quick capture (no investigation)") }, onClick = { open = false; nav.navigate(Routes.capture(b.project.id, null)) })
         DropdownMenuItem(
             text = { Text(if (b.project.privacyPolicy == PrivacyPolicy.LOCAL_ONLY) "Policy: LOCAL ONLY (tap to allow AI)" else "Policy: AI ALLOWED (tap for local only)") },

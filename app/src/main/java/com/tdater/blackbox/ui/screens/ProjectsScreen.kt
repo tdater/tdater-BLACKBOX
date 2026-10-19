@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -55,7 +56,7 @@ import com.tdater.blackbox.ui.components.fmtTime
 import java.io.File
 
 @Composable
-fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -> Unit) {
+fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -> Unit, openSearch: () -> Unit) {
     val projects by remember { vm.repo.observeProjects() }.collectAsStateWithLifecycle(initialValue = null)
     val investigations by remember { vm.repo.observeAllInvestigations() }.collectAsStateWithLifecycle(initialValue = emptyList())
     var creating by rememberSaveable { mutableStateOf(false) }
@@ -81,6 +82,7 @@ fun ProjectsScreen(vm: MainViewModel, open: (String) -> Unit, openSettings: () -
     Scaffold(
         topBar = {
             BbTopBar("BLACKBOX", "Projects remember what happened", onBack = null) {
+                IconButton(onClick = openSearch) { Icon(Icons.Default.Search, contentDescription = "Search records") }
                 IconButton(onClick = openSettings) { Icon(Icons.Default.Settings, contentDescription = "Settings") }
             }
         },

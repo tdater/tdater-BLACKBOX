@@ -291,6 +291,16 @@ class BlackboxRepository(
         plan.id
     }
 
+    /** The regression flag is not part of a plan's tested content, so toggling it is not a new revision. */
+    suspend fun setPlanRegression(planId: String, flag: Boolean) = db.withTransaction {
+        val p = dao.plan(planId) ?: return@withTransaction
+        dao.upsertPlan(p.copy(isRegression = flag, updatedAt = clock()))
+        event(p.projectId, p.investigationId, TimelineType.NOTE, p.id,
+            if (flag) "Added to regression checklist: ${p.title}" else "Removed from regression checklist: ${p.title}")
+    }
+
+    suspend fun loadAllBundles(): List<ProjectBundle> = dao.allProjects().mapNotNull { loadBundle(it.id) }
+
     /** Idempotent: if the plan already has an unfinished run, that run is returned instead of a duplicate. */
     suspend fun startRun(planId: String, buildId: String?, envId: String?, intendedChange: String): String = db.withTransaction {
         dao.unfinishedRunForPlan(planId)?.let { return@withTransaction it.id }

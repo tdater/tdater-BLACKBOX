@@ -3,7 +3,7 @@
 ## Automated
 | Command | Where it ran | Result |
 |---|---|---|
-| `./gradlew :core:test` | Claude cloud sandbox (JDK 21) | 16/16 pass |
+| `./gradlew :core:test` | Claude cloud sandbox (JDK 21) | 21/21 pass |
 | `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | GitHub Actions (`android.yml`) | see latest run |
 
 `:core` tests (`CoreAcceptanceTest`) cover acceptance D, E, F, G, H, J, K. `:app` Robolectric tests
