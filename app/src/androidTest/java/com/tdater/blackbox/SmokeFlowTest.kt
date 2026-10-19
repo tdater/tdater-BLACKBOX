@@ -40,6 +40,7 @@ class SmokeFlowTest {
     fun sampleWorkbenchSearchAndRegression() {
         waitText(LOAD_SAMPLE)
         shot("01-projects-empty")
+        rule.waitUntil(15_000) { rule.onAllNodesWithContentDescription("Guide and FAQ").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithContentDescription("Guide and FAQ").performClick()
         waitText("Quick start (5 minutes)")
         shot("02-guide")
@@ -68,7 +69,10 @@ class SmokeFlowTest {
         back()
         waitText(SAMPLE_PROJECT)
         rule.onNodeWithText(SAMPLE_PROJECT).performClick()
+        // The project menu only appears once the project bundle has loaded.
+        rule.waitUntil(15_000) { rule.onAllNodesWithContentDescription("Project actions").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithContentDescription("Project actions").performClick()
+        waitText("Regression checklist")
         rule.onNodeWithText("Regression checklist").performClick()
         waitText("Suggested from fixed failures")
         rule.onNodeWithText("Add to checklist").performClick()
