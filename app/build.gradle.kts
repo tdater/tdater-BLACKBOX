@@ -16,8 +16,8 @@ android {
         applicationId = "com.tdater.blackbox"
         minSdk = 29
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // 64-bit phones plus the x86_64 emulator; drops 32-bit copies of the AI and ML Kit native libraries.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
