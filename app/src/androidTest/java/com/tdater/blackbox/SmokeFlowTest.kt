@@ -1,7 +1,10 @@
 package com.tdater.blackbox
 
 import android.os.ParcelFileDescriptor
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -40,7 +43,7 @@ class SmokeFlowTest {
     fun sampleWorkbenchSearchAndRegression() {
         waitText(LOAD_SAMPLE)
         shot("01-projects-empty")
-        rule.waitUntil(15_000) { rule.onAllNodesWithContentDescription("Guide and FAQ").fetchSemanticsNodes().isNotEmpty() }
+        waitDesc("Guide and FAQ")
         rule.onNodeWithContentDescription("Guide and FAQ").performClick()
         waitText("Quick start (5 minutes)")
         shot("02-guide")
@@ -70,7 +73,7 @@ class SmokeFlowTest {
         waitText(SAMPLE_PROJECT)
         rule.onNodeWithText(SAMPLE_PROJECT).performClick()
         // The project menu only appears once the project bundle has loaded.
-        rule.waitUntil(15_000) { rule.onAllNodesWithContentDescription("Project actions").fetchSemanticsNodes().isNotEmpty() }
+        waitDesc("Project actions")
         rule.onNodeWithContentDescription("Project actions").performClick()
         waitText("Regression checklist")
         rule.onNodeWithText("Regression checklist").performClick()
@@ -95,8 +98,22 @@ class SmokeFlowTest {
         rule.waitForIdle()
     }
 
-    private fun waitText(text: String, substring: Boolean = false) {
-        rule.waitUntil(15_000) { rule.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
+    private fun waitText(text: String, substring: Boolean = false) =
+        waitFor("text \"$text\"") { rule.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty() }
+
+    private fun waitDesc(desc: String) =
+        waitFor("content description \"$desc\"") { rule.onAllNodesWithContentDescription(desc).fetchSemanticsNodes().isNotEmpty() }
+
+    /** Waits, and on timeout fails with what was being waited for plus the current UI tree and a screenshot. */
+    private fun waitFor(what: String, condition: () -> Boolean) {
+        try {
+            rule.waitUntil(15_000, condition)
+        } catch (e: ComposeTimeoutException) {
+            runCatching { shot("FAIL") }
+            val roots = rule.onAllNodes(isRoot())
+            val tree = (0 until roots.fetchSemanticsNodes().size).joinToString("\n---\n") { roots[it].printToString(maxDepth = 12) }
+            throw AssertionError("Timed out waiting for $what. UI tree:\n$tree", e)
+        }
     }
 
     private fun shot(name: String) {
