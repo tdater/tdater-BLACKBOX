@@ -4,12 +4,16 @@
 | Command | Where it ran | Result |
 |---|---|---|
 | `./gradlew :core:test` | Claude cloud sandbox (JDK 21) | 27/27 pass |
-| `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | GitHub Actions (`android.yml`) | see latest run |
+| `./gradlew :core:test :app:testDebugUnitTest :app:assembleDebug` | GitHub Actions (`android.yml`, job `build`) | see latest run |
+| `./gradlew :app:connectedDebugAndroidTest` (`SmokeFlowTest`) | GitHub Actions emulators: API 34 phone (pixel_6) and a pixel_6 resized to the unfolded Fold inner display (2208x1840 @ 420dpi) | first green 2026-10-19 |
 
 `:core` tests (`CoreAcceptanceTest`) cover acceptance D, E, F, G, H, J, K. `:app` Robolectric tests
-(`RepositoryWorkflowTest`) cover A, B, duplicate-run prevention, F and H through the real Room database.
+(`RepositoryWorkflowTest`) cover A, B, duplicate-run prevention, F, H and event-log import through the real Room database.
+`SmokeFlowTest` drives the real UI: guide, sample project, workbench, activity recreation (selection survives),
+search and the regression checklist. Screenshots per profile are uploaded as `emulator-phone` / `emulator-fold-unfolded`
+artifacts. It does not cover real hinge postures (tabletop) or the outer display; those need the device.
 
-## Device verification (not yet done; no device or emulator was available)
+## Device verification (not yet done on hardware; emulator smoke covers only the flows listed above)
 Run on the Fold with a fresh install:
 - [ ] A: airplane mode, full first workflow from README, force-stop, reopen, data intact.
 - [ ] B: import a screenshot from Files, delete the original, evidence still opens.
