@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>BLACKBOX</title>
-<meta name="description" content="BLACKBOX is a flight recorder for debugging on Android: capture evidence, run tests against frozen plans, compare runs honestly and pick up exactly where you left off. Offline, no account, no internet permission.">
+<meta name="description" content="BLACKBOX is a local-first Android project intelligence workbench that connects evidence, tests, comparisons and next actions in one workflow, so you always know what you know and what to do next. No account, no internet permission.">
 <meta property="og:title" content="BLACKBOX">
-<meta property="og:description" content="A flight recorder for debugging, built for the Galaxy Fold. Free APK download.">
+<meta property="og:description" content="A local-first project intelligence workbench for Android, built first for the Galaxy Z Fold8. Free APK download.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tdater.github.io/BLACKBOX-releases/">
 <meta name="theme-color" content="#0a0b10">
@@ -180,8 +180,26 @@
     .screen { font-size: 7px; }
   }
   @media (prefers-reduced-motion: reduce) { .recorder .rec::before { animation: none; } }
-</style>
 
+  .flow { font: 600 15px var(--mono); color: var(--cyan); letter-spacing: .04em; margin: 0; }
+  .flow i { color: var(--orange); font-style: normal; }
+  .chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chain span { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-weight: 700; }
+  .chain span.hot { border-color: var(--orange); color: var(--orange-hot); }
+  .chain i { font: 12px var(--mono); color: var(--muted); font-style: normal; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips span { font: 13px var(--mono); background: var(--panel-2); border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; }
+  .phases { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .phase { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+  .phase.done { border-top-color: var(--orange); }
+  .phase small { display: block; font: 600 12px var(--mono); color: var(--cyan); letter-spacing: .1em; text-transform: uppercase; }
+  .phase b { display: block; font: 700 18px/1.2 var(--display); margin: 4px 0 6px; }
+  .phase p { margin: 0; color: var(--muted); font-size: 15px; }
+  .manifesto { border-left: 4px solid var(--orange); padding-left: 20px; display: grid; gap: 10px; }
+  .manifesto blockquote { margin: 0; font: 700 clamp(20px, 3vw, 28px)/1.35 var(--display); }
+  @media (max-width: 860px) { .phases { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .phases { grid-template-columns: 1fr; } }
+</style>
 </head>
 <body>
 <main class="wrap">
@@ -192,25 +210,26 @@
         <div class="brand">
           <svg viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" rx="24" fill="#ff6b1a"/><rect x="32" y="36" width="44" height="36" rx="4" fill="#111218"/><path d="M32 64h8l-4 8h-4zM46 64h8l-4 8h-8zM60 64h8l-4 8h-8z" fill="#ff6b1a"/><path d="M37 52h9l4-10 5 18 4-12h12" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <div>
-            <p class="kicker">Flight recorder for debugging</p>
+            <p class="kicker">Project intelligence workbench</p>
             <h1>BLACK<span>BOX</span></h1>
           </div>
         </div>
-        <p class="lede">When a bug takes three evenings, the hard part isn't the fix. It's remembering what you already tried, on which build, with what settings, and what actually happened.</p>
-        <p class="lede">BLACKBOX records it for you. Capture logs, photos and voice notes, run tests against plans that can't quietly change, compare runs without pretending gaps are "the same", and resume tomorrow from a one-screen briefing. Everything stays on the phone.</p>
+        <p class="lede">A local-first Android workbench that connects the parts of troubleshooting and development that usually end up scattered across screenshots, notes, logs, conversations and memory.</p>
+        <p class="flow" aria-label="The workflow">Capture evidence <i>→</i> ask a question <i>→</i> plan a test <i>→</i> record the result <i>→</i> compare <i>→</i> resume or hand off</p>
+        <p class="lede">The goal isn't more tools in one app. It's removing the gaps between them, so every observation, change and result adds to a lasting understanding of the project.</p>
         <div class="download">
           <a class="btn" href="https://github.com/tdater/BLACKBOX-releases/releases/latest">Download APK</a>
           <a class="btn ghost" href="#install">How to install</a>
-          <span class="meta">Android 10+ · Phone or Galaxy Z Fold</span>
+          <span class="meta">Android 10+ · Built for the Galaxy Z Fold8</span>
         </div>
       </div>
-      <div class="fold" role="img" aria-label="BLACKBOX on an unfolded Galaxy Z Fold: project list on the left, the investigation workbench on the right">
+      <div class="fold" role="img" aria-label="Illustration of BLACKBOX on an unfolded Galaxy Z Fold: project list on the left, the investigation workbench on the right">
         <div class="screen">
           <div class="pane">
-            <div class="m-top">BLACKBOX<div class="m-sub">FLIGHT RECORDER FOR DEBUGGING</div></div>
+            <div class="m-top">BLACKBOX<div class="m-sub">PROJECT INTELLIGENCE WORKBENCH</div></div>
             <div class="m-card" style="--c:var(--orange)"><span class="pill p-warn">SAMPLE</span><span class="pill p-info">LOCAL ONLY</span><b>KITT launcher</b><i>NEXT ▸ re-run on 1.4.1 in BLE mode</i></div>
-            <div class="m-card" style="--c:var(--cyan)"><span class="pill p-info">AI ALLOWED</span><b>Garage door relay</b><i>NEXT ▸ no next action recorded</i></div>
-            <div class="m-card" style="--c:var(--orange)"><span class="pill p-info">LOCAL ONLY</span><b>RetroTV pad input</b><i>NEXT ▸ test 8BitDo in keyboard mode</i></div>
+            <div class="m-card" style="--c:var(--cyan)"><span class="pill p-info">AI ALLOWED</span><b>Head-unit audio</b><i>NEXT ▸ no next action recorded</i></div>
+            <div class="m-card" style="--c:var(--orange)"><span class="pill p-info">LOCAL ONLY</span><b>Dash cam wiring</b><i>NEXT ▸ measure ACC line with key off</i></div>
           </div>
           <div class="pane">
             <div><span class="pill p-warn">ACTIVE</span><span class="pill p-good">1 PASS</span><span class="pill p-bad">1 FAIL</span></div>
@@ -226,222 +245,266 @@
       </div>
     </div>
     <div class="recorder" aria-hidden="true">
-      <div class="bar"><span class="rec">REC</span><span>CH1 · RUN TIMELINE</span><span id="clock">T+00:00</span></div>
+      <div class="bar"><span class="rec">REC</span><span>CH1 · INVESTIGATION TIMELINE</span><span id="clock">T+00:00</span></div>
       <canvas id="trace" width="1080" height="130"></canvas>
     </div>
     <div class="readouts">
       <div class="readout"><b>0</b><small>Accounts needed</small></div>
       <div class="readout"><b>0</b><small>Internet permissions</small></div>
-      <div class="readout"><b>5</b><small>Ways runs can differ</small></div>
-      <div class="readout"><b>2</b><small>Panes when unfolded</small></div>
+      <div class="readout"><b>5</b><small>Kinds of knowledge kept apart</small></div>
+      <div class="readout"><b>3</b><small>Fold postures designed for</small></div>
     </div>
   </header>
 
   <nav aria-label="Sections">
     <ul>
-      <li><a href="#loop">How it works</a></li>
-      <li><a href="#capture">Capture</a></li>
-      <li><a href="#runs">Test runs</a></li>
-      <li><a href="#compare">Compare</a></li>
-      <li><a href="#claims">Claims</a></li>
-      <li><a href="#resume">Resume</a></li>
-      <li><a href="#handoff">Fix requests</a></li>
-      <li><a href="#ai">On-device AI</a></li>
-      <li><a href="#fold">The Fold</a></li>
+      <li><a href="#problem">The problem</a></li>
+      <li><a href="#idea">Core idea</a></li>
+      <li><a href="#workflow">Workflow</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#fold">Fold-native</a></li>
+      <li><a href="#evidence">Evidence first</a></li>
+      <li><a href="#ai">AI</a></li>
       <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#example">Example</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
       <li><a href="#install">Install</a></li>
-      <li><a href="#whats-new">What's new</a></li>
     </ul>
   </nav>
 
-  <section id="loop">
-    <h2>How it works <span class="ch">THE LOOP</span></h2>
-    <p class="intro">A project is the thing you're fixing: an app, a car, a garage door opener. Each problem in it is an investigation, and every investigation runs the same loop.</p>
+  <section id="problem">
+    <h2>The problem <span class="ch">SCATTERED CONTEXT</span></h2>
+    <p class="intro">A typical technical project spans tools that don't talk to each other. That works until the project gets complicated, gets interrupted, or grows several overlapping failures.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Where the facts live</h3>
+        <ul class="list">
+          <li>Screenshots show what happened.</li>
+          <li>Logs hold the diagnostic details.</li>
+          <li>Notes explain what was changed.</li>
+          <li>AI conversations hold possible explanations.</li>
+          <li>Source control records the code changes.</li>
+          <li>Memory is expected to connect everything else.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Questions that get hard</h3>
+        <ul class="list">
+          <li>Which build introduced this behavior?</li>
+          <li>What exactly changed before the problem appeared?</li>
+          <li>Did that adjustment help, or did the test conditions change?</li>
+          <li>Have I already tried this?</li>
+          <li>What was the last known-good configuration?</li>
+          <li>What should I do next?</li>
+          <li>How do I brief a coding agent without rebuilding the whole context?</li>
+        </ul>
+      </div>
+    </div>
+    <p class="intro" style="margin-top:14px">BLACKBOX makes those answers part of the project record instead of something you reconstruct over and over.</p>
+  </section>
+
+  <section id="idea">
+    <h2>The core idea <span class="ch">A CONNECTED RECORD</span></h2>
+    <p class="intro">A project is more than a conversation or a folder of attachments. BLACKBOX keeps its goals, questions, evidence, environment and configuration, changes, tests, outcomes, remaining unknowns and next actions, and the links between them.</p>
+    <div class="chain" aria-label="How records connect">
+      <span>Screenshot</span><i>supports</i><span>Observation</span><i>motivates</i><span>Hypothesis</span><i>leads to</i><span>Test</span><i>produces</i><span>Result</span><i>updates</i><span class="hot">Next action</span>
+    </div>
+    <p class="intro" style="margin-top:14px">The result is a history that explains what happened and why the next step makes sense.</p>
+    <h3 style="margin-top:22px">Who it's for</h3>
+    <div class="chips">
+      <span>Android app development</span><span>AI-assisted coding and debugging</span><span>Head-unit and launcher development</span>
+      <span>Automotive telemetry and OBD-II</span><span>Bluetooth and connected hardware</span><span>Electronics and accessory installs</span>
+      <span>Repeatable software and hardware tests</span><span>Personal projects across many sessions</span>
+    </div>
+  </section>
+
+  <section id="workflow">
+    <h2>Core workflow <span class="ch">SIX STEPS</span></h2>
+    <p class="intro">Saving an observation never waits on an AI response, an internet connection or a long form. Capture first, organize later.</p>
     <div class="loop">
-      <div class="step"><b>Capture</b><small>Logs, screenshots, photos, voice notes and measurements, filed under the problem.</small></div>
-      <div class="step"><b>Plan</b><small>Write the test and the expected result before you run it.</small></div>
-      <div class="step"><b>Run</b><small>Record the build, the environment, what you changed and the outcome.</small></div>
-      <div class="step"><b>Compare</b><small>See what changed between a pass and a fail, including what nobody wrote down.</small></div>
-      <div class="step"><b>Resume</b><small>A one-screen briefing of where you are and what to do next.</small></div>
-      <div class="step"><b>Hand off</b><small>A clean fix request for another person or an AI chat, reviewed before it leaves.</small></div>
+      <div class="step"><b>Create an investigation</b><small>Start with one problem: "Live OBD values stop updating after the head-unit screen turns off." Record what should happen, what does, and the starting conditions.</small></div>
+      <div class="step"><b>Capture evidence</b><small>Text, photos, screenshots, logs, files, voice notes and measurements, saved immediately.</small></div>
+      <div class="step"><b>Record the environment</b><small>Device, OS, build, connected hardware, connection mode and settings. Old tests keep their original snapshot.</small></div>
+      <div class="step"><b>Define a test</b><small>The question, prerequisites, steps, expected behavior, the one variable changed and what stays constant.</small></div>
+      <div class="step"><b>Record the result</b><small>Pass, fail, partial, inconclusive or not finished, with evidence. A pass proves that run's expectation, not that the project is fixed.</small></div>
+      <div class="step"><b>Compare and continue</b><small>Pick the next test, keep a known-good reference, add a regression check, hand off, or pause with a clear resume point.</small></div>
     </div>
   </section>
 
-  <section id="capture">
-    <h2>Capture everything <span class="ch">EVIDENCE</span></h2>
-    <p class="intro">Evidence is copied into BLACKBOX's own storage, so it survives you deleting the original screenshot or clearing Downloads.</p>
-    <div class="grid three">
-      <div class="card"><h3>Text and logs</h3><p class="muted">Paste a logcat dump, an error message or notes. Huge pastes are kept whole as an attached file instead of choking the app.</p></div>
-      <div class="card"><h3>Files and photos</h3><p class="muted">Import any file, or take a photo with the system camera. Share from any app straight into a project.</p></div>
-      <div class="card"><h3>Voice notes</h3><p class="muted">Record while your hands are busy under a dashboard. Recording survives folding and rotating the phone.</p></div>
-      <div class="card"><h3>Measurements</h3><p class="muted">Numbers with their units. Compare flags readings in different units as not comparable instead of lining up volts against amps.</p></div>
-      <div class="card"><h3>App event logs</h3><p class="muted">Your own apps can write a simple JSON event log. Import it and errors, warnings and marked events land on the timeline.</p></div>
-      <div class="card"><h3>Withdraw, don't delete</h3><p class="muted">Removing evidence deletes the file but keeps the record, and any claim that relied on it gets flagged.</p></div>
-    </div>
-  </section>
-
-  <section id="runs">
-    <h2>Test runs that keep their story <span class="ch">PLANS · OUTCOMES</span></h2>
+  <section id="features">
+    <h2>Core features <span class="ch">IN 0.1.0</span></h2>
     <div class="grid">
-      <div class="card">
-        <h3>Plans with revisions</h3>
-        <ul class="list">
-          <li>Steps, the expected result and what to hold constant, written down first.</li>
-          <li>Editing a plan creates a new revision. Every run keeps a frozen copy of the exact revision it used.</li>
-          <li>A fixed failure can join the <b>regression checklist</b>, so it gets re-checked after the next change.</li>
-        </ul>
+      <div class="card"><h3>Projects and investigations</h3><p class="muted">One project holds several investigations, each with its own evidence, tests, status and next action, so the broad project and the specific problem stay distinct.</p></div>
+      <div class="card"><h3>Evidence timeline</h3><p class="muted">A chronological record of observations, attachments, changes and results, linked to the investigation or test that gives them meaning. Originals and later interpretations stay distinguishable.</p></div>
+      <div class="card"><h3>Structured test runs</h3><p class="muted">Reusable plans with revisions. Each run is recorded against a specific build and environment snapshot, with expected and actual behavior kept separate.</p></div>
+      <div class="card"><h3>Resume capsules</h3><p class="muted">Objective, last known-good state, current failure, last tested change, next action and relevant evidence on one screen. Marked <span class="st p-warn">STALE</span> once newer activity makes it outdated.</p></div>
+      <div class="card wide">
+        <h3>"What changed?" comparisons</h3>
+        <p class="muted">Compares recorded information between two runs: known changes, known matches, missing or unknown values, different outcomes, and conditions that make the comparison unreliable. Missing information is never shown as proof that nothing changed.</p>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Field</th><th>Run 1 · FAIL</th><th>Run 2 · PASS</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>Build</td><td class="mono">1.4.0</td><td class="mono">1.4.1</td><td><span class="st p-warn">≠ CHANGED</span></td></tr>
+              <tr><td>Android version</td><td class="mono">14</td><td class="mono">14</td><td><span class="st" style="color:var(--muted)">= SAME</span></td></tr>
+              <tr><td>Connection mode</td><td class="mono">Bluetooth Classic</td><td class="mono">not recorded</td><td><span class="st p-info">? UNKNOWN</span></td></tr>
+              <tr><td>Battery saver</td><td class="mono">on</td><td class="mono">—</td><td><span class="st p-info">∅ MISSING</span></td></tr>
+              <tr><td>Supply reading</td><td class="mono">12.4 V</td><td class="mono">3.1 A</td><td><span class="st p-bad">⊘ NOT COMPARABLE</span></td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div class="card">
-        <h3>Every run records</h3>
-        <ul class="list">
-          <li>The build, plus an environment snapshot: device, OS, connection, settings.</li>
-          <li>What you meant to change and what actually changed.</li>
-          <li>Outcome: <span class="st p-good">✓ PASS</span> <span class="st p-bad">✗ FAIL</span> <span class="st p-warn">◐ PARTIAL</span> <span class="st p-warn">? INCONCLUSIVE</span>, or abandoned.</li>
-          <li>Measurements, timestamped markers and deviations from the plan.</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <section id="compare">
-    <h2>Compare runs honestly <span class="ch">UNKNOWN IS A VALUE</span></h2>
-    <p class="intro">Most debugging mistakes come from assuming something didn't change because nobody wrote it down. BLACKBOX never treats a gap as "same".</p>
-    <div class="card">
-      <div class="tablewrap">
-        <table>
-          <thead><tr><th>Field</th><th>Run 1 · FAIL</th><th>Run 2 · PASS</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>Build</td><td class="mono">1.4.0</td><td class="mono">1.4.1</td><td><span class="st p-warn">≠ CHANGED</span></td></tr>
-            <tr><td>Android version</td><td class="mono">14</td><td class="mono">14</td><td><span class="st" style="color:var(--muted)">= SAME</span></td></tr>
-            <tr><td>Connection</td><td class="mono">Bluetooth Classic</td><td class="mono">not recorded</td><td><span class="st p-info">? UNKNOWN</span></td></tr>
-            <tr><td>Battery saver</td><td class="mono">on</td><td class="mono">—</td><td><span class="st p-info">∅ MISSING</span></td></tr>
-            <tr><td>Supply voltage</td><td class="mono">12.4 V</td><td class="mono">3.1 A</td><td><span class="st p-bad">⊘ NOT COMPARABLE</span></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="muted">Here the pass may be the fix, or it may be the adapter mode nobody recorded. BLACKBOX says so instead of letting you guess.</p>
-    </div>
-  </section>
-
-  <section id="claims">
-    <h2>Claims that know what they are <span class="ch">CLASSIFIED</span></h2>
-    <p class="intro">Every conclusion is labelled for what it is and cites the evidence and runs behind it. Accepting a claim marks it reviewed, not proven.</p>
-    <div class="claims">
-      <div class="claim"><span class="st p-info">OBSERVED</span><small>You saw or measured it. "RPM froze after screen-off on build 1.4.0."</small></div>
-      <div class="claim"><span class="st p-warn">INFERRED</span><small>A reasonable guess, labelled as one. "The OS may close the socket."</small></div>
-      <div class="claim"><span class="st p-good">SUPPORTED BY TEST</span><small>Backed by a run. "1.4.1 keeps telemetry alive through 60 s off."</small></div>
-      <div class="claim"><span class="st" style="color:var(--muted)">UNKNOWN</span><small>Not established yet, and nobody pretends otherwise.</small></div>
-    </div>
-  </section>
-
-  <section id="resume">
-    <h2>Pick up where you left off <span class="ch">RESUME</span></h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Resume capsules</h3>
-        <p class="muted">One screen generated from your records: the current failure, the last run, what's known, what's still unknown and the next action. Saved capsules never get rewritten. When records change afterwards, the capsule is marked <span class="st p-warn">STALE</span> so you know to regenerate it.</p>
-      </div>
-      <div class="card">
-        <h3>Search and timeline</h3>
-        <p class="muted">Search every project for "broken pipe" or a build number and jump straight to the run, plan or evidence. Each investigation keeps a timeline of everything that happened, in order.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="handoff">
-    <h2>Fix requests <span class="ch">HANDOFF</span></h2>
-    <p class="intro">When you need help, BLACKBOX writes the bug report you wish people sent you. Pick which evidence goes in, review anything that looks sensitive, edit the Markdown, then copy, save or share it. Nothing is sent automatically.</p>
-    <pre class="md"><span class="h">## OBD values freeze after screen-off</span>
+      <div class="card wide">
+        <h3>Coding-agent handoffs</h3>
+        <p class="muted">Editable Markdown for Claude Code or any other workflow: the problem and desired outcome, environment and build, reproduction steps, expected and observed behavior, changes already tested, results, selected evidence, remaining unknowns and the requested next action. You review it before copying, saving or sharing.</p>
+        <pre class="md"><span class="h">## OBD values freeze after screen-off</span>
 <span class="k">Expected:</span> telemetry resumes after screen-on
-<span class="k">Actual:</span>   RPM and speed freeze; log ends in <span class="r">IOException: Broken pipe</span>
+<span class="k">Observed:</span> RPM and speed freeze; log ends in <span class="r">IOException: Broken pipe</span>
 
-<span class="h">### Runs</span>
+<span class="h">### Tested</span>
 - ✗ FAIL  Screen off 60 s · build 1.4.0 · Bluetooth Classic
 - ✓ PASS  Screen off 60 s · build 1.4.1 · connection <span class="k">not recorded</span>
 
-<span class="h">### Known gaps</span>
-- Adapter mode differs or is unknown between the runs</pre>
-  </section>
+<span class="h">### Unknowns</span>
+- Adapter mode differs or is unknown between the runs
 
-  <section id="ai">
-    <h2>On-device AI <span class="ch">OPTIONAL · OFF BY DEFAULT</span></h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Runs on the phone</h3>
-        <ul class="list">
-          <li>Import a LiteRT-LM model file (for example Gemma 3 1B). It runs on the CPU. No key, no account, no bill.</li>
-          <li>Ask it to suggest next tests, summarize what's known, or find gaps and contradictions.</li>
-          <li>You tick exactly which records it reads.</li>
-        </ul>
+<span class="h">### Requested next action</span>
+Confirm the fix with the adapter in BLE mode before closing.</pre>
       </div>
-      <div class="card">
-        <h3>Kept on a short leash</h3>
-        <ul class="list">
-          <li>Projects marked LOCAL ONLY are refused, even by the on-device model.</li>
-          <li>Every answer must cite the records it used. Answers citing records it wasn't given are thrown out.</li>
-          <li>Anything you keep is saved as an INFERRED claim, authored by "ai". It's still a guess until you test it.</li>
-        </ul>
-      </div>
+      <div class="card"><h3>Project archives</h3><p class="muted">Export and import a whole project with its attachments and relationships, checksummed. Importing always creates a new project, so nothing gets overwritten.</p></div>
+      <div class="card"><h3>Regression memory</h3><p class="muted">Confirmed past failures become checks to revisit before you accept a new build. Project-specific, built from your actual history.</p></div>
     </div>
   </section>
 
   <section id="fold">
-    <h2>Built for the Fold <span class="ch">ADAPTIVE</span></h2>
+    <h2>Fold-native <span class="ch">ONE DEVICE, THREE WORKSPACES</span></h2>
+    <p class="intro">The Fold is treated as a workspace that changes shape, not a phone layout stretched across a bigger screen. It stays useful on ordinary phones and other Android form factors.</p>
     <div class="grid three">
-      <div class="card"><h3>Folded</h3><p class="muted">One column on the cover screen, made for capturing quickly with one hand.</p></div>
-      <div class="card"><h3>Unfolded</h3><p class="muted">Two panes: your investigations on one side, the workbench on the other.</p></div>
-      <div class="card"><h3>Half open</h3><p class="muted">On the run screen, tabletop posture splits controls from the record, so the phone props itself up on the bench.</p></div>
+      <div class="card"><h3>Compact</h3><p class="muted">Quick evidence capture, project selection, resume summaries and focused single tasks.</p></div>
+      <div class="card"><h3>Expanded</h3><p class="muted">Related information side by side: investigation and evidence, expected and actual, two runs, timeline and next action.</p></div>
+      <div class="card"><h3>Tabletop</h3><p class="muted">Reference material on the upper half; capture controls, test steps and result entry on the lower half.</p></div>
     </div>
-    <p class="intro" style="margin-top:14px">Folding, unfolding or rotating mid-run never loses your place, duplicates a run or restarts a recording. Normal phones get the same app in one or two columns depending on width.</p>
+    <p class="intro" style="margin-top:14px"><b>Continuity:</b> folding, unfolding, rotating or resizing never loses a draft, duplicates a test, restarts a capture or resets the active investigation. This is tested on emulators; behavior on the Fold8 itself is still being verified.</p>
+  </section>
+
+  <section id="evidence">
+    <h2>Evidence before answers <span class="ch">FIVE KINDS OF KNOWLEDGE</span></h2>
+    <div class="card">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Category</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><span class="st p-info">OBSERVED</span></td><td>Recorded by you, imported from an artifact, or directly measured.</td></tr>
+            <tr><td><span class="st p-warn">INFERRED</span></td><td>A possible explanation or interpretation.</td></tr>
+            <tr><td><span class="st" style="color:var(--orange)">TESTED</span></td><td>An action performed under recorded conditions.</td></tr>
+            <tr><td><span class="st p-good">SUPPORTED RESULT</span></td><td>A specific outcome established by that test.</td></tr>
+            <tr><td><span class="st" style="color:var(--muted)">UNKNOWN</span></td><td>Missing, conflicting or not yet established.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="list">
+        <li>An AI suggestion never silently becomes a confirmed fact.</li>
+        <li>A correlation is never presented as proof of causation.</li>
+        <li>Conflicting observations stay visible instead of being overwritten into a cleaner story.</li>
+        <li>"Unknown" is a valid and useful result.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="ai">
+    <h2>Optional AI assistance <span class="ch">OFF BY DEFAULT</span></h2>
+    <p class="intro">AI speeds up the investigation without replacing its evidence. The project record stays fully useful with AI unavailable, disabled or never set up.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>What it helps with</h3>
+        <ul class="list">
+          <li>Summarizing selected records.</li>
+          <li>Spotting missing information.</li>
+          <li>Suggesting hypotheses.</li>
+          <li>Proposing a test that separates competing explanations.</li>
+        </ul>
+        <p class="muted">In 0.1.0 this is one well-integrated provider: a LiteRT-LM model file you import, running on the phone. No key, no account, no bill.</p>
+      </div>
+      <div class="card">
+        <h3>Rules it follows</h3>
+        <ul class="list">
+          <li>You start every request.</li>
+          <li>It only sees records you select, from projects that allow it.</li>
+          <li>Its output stays separate from original evidence and is saved only as an inferred claim.</li>
+          <li>Records it cites must exist, or the answer is discarded.</li>
+          <li>Errors are reported honestly. No hidden cloud fallback.</li>
+          <li>It never runs commands it proposes.</li>
+        </ul>
+      </div>
+    </div>
   </section>
 
   <section id="privacy">
-    <h2>Privacy <span class="ch">LOCAL ONLY</span></h2>
+    <h2>Privacy and local-first <span class="ch">NO ACCOUNT · NO CLOUD</span></h2>
     <div class="grid">
-      <div class="card">
-        <ul class="list">
-          <li>No internet permission at all. The app cannot send anything anywhere.</li>
-          <li>No account, analytics, ads or telemetry.</li>
-          <li>Android cloud backup is turned off for BLACKBOX data.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <ul class="list">
-          <li>Back up with <b>Export project archive</b>: a .zip of every record and attachment, with checksums.</li>
-          <li>Importing an archive always creates a new project. It can never overwrite existing work.</li>
-          <li>Uninstalling deletes everything that hasn't been exported.</li>
-        </ul>
-      </div>
+      <div class="card"><h3>Local-only projects</h3><p class="muted">Excluded from every AI request. The rule lives in the app's request-handling logic, not just the interface. BLACKBOX doesn't even request internet permission.</p></div>
+      <div class="card"><h3>Deliberate sharing</h3><p class="muted">You review what goes into a handoff or export. Private attachments, sensitive logs and credentials are never included automatically; a scanner flags likely secrets before you share.</p></div>
+      <div class="card"><h3>No silent monitoring</h3><p class="muted">BLACKBOX doesn't watch your device or collect activity from other apps. Any future capture feature will use supported access methods and explicit action.</p></div>
+      <div class="card"><h3>Honest boundaries</h3><p class="muted">Local-only controls what the app uploads. It isn't a claim of complete device security or forensic protection. Handle work information according to your organization's policies.</p></div>
+    </div>
+  </section>
+
+  <section id="example">
+    <h2>Example investigation <span class="ch">INCLUDED AS THE SAMPLE PROJECT</span></h2>
+    <div class="grid">
+      <div class="card"><h3>Problem</h3><p class="muted">OBD readings stop updating after the screen turns off. The adapter stays connected, RPM freezes, a log of the session is imported, and the build and adapter details are recorded.</p></div>
+      <div class="card"><h3>Test</h3><p class="muted">Repeat the screen-off sequence while changing one configuration value. The outcome is attached to that run with its actual environment and evidence.</p></div>
+      <div class="card"><h3>Comparison</h3><p class="muted">BLACKBOX shows the recorded difference and the different outcomes. It does not declare that the changed setting caused the improvement.</p></div>
+      <div class="card"><h3>Handoff</h3><p class="muted">A fix request with the reproduction steps, tested changes, results and selected logs. The coding agent gets a focused brief instead of a vague description and a pile of screenshots.</p></div>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <h2>Roadmap <span class="ch">DIRECTION, NOT PROMISES</span></h2>
+    <div class="phases">
+      <div class="phase done"><small>Phase 1 · in 0.1.0</small><b>Offline investigation workbench</b><p>Projects and investigations, evidence capture and import, test plans and results, environment and build references, timeline, deterministic comparisons, resume capsules, editable handoffs, archives, adaptive layouts.</p></div>
+      <div class="phase done"><small>Phase 2 · in 0.1.0</small><b>Development intelligence</b><p>Optional on-device AI, reviewed context selection, evidence-linked interpretations, regression checklists, search, event imports from apps you own.</p></div>
+      <div class="phase"><small>Phase 3 · planned</small><b>Physical project workbench</b><p>Component labels on photos, installation history, diagrams and reference material, parts and connection records, instrument readings, before-and-after comparisons.</p></div>
+      <div class="phase"><small>Phase 4 · planned</small><b>Controlled experiments and continuity</b><p>Experiment templates, stricter measurement comparisons, cross-device resume, optional companion integrations, more AI roles where they prove useful.</p></div>
+    </div>
+  </section>
+
+  <section id="not">
+    <h2>What BLACKBOX is not</h2>
+    <div class="card">
+      <ul class="list">
+        <li>Another generic chatbot, or an always-recording surveillance tool.</li>
+        <li>A universal controller for every installed app.</li>
+        <li>A replacement for an IDE or source control.</li>
+        <li>A guarantee of diagnostic accuracy, or a substitute for proper physical measurements and safety procedures.</li>
+        <li>A pile of disconnected features behind a dashboard.</li>
+      </ul>
+      <p class="muted">Its value is keeping the problem, its evidence, the tests performed and the next useful action connected.</p>
     </div>
   </section>
 
   <section id="install">
-    <h2>Install <span class="ch">SIDELOAD</span></h2>
+    <h2>Install <span class="ch">0.1.0 · ACTIVE DEVELOPMENT</span></h2>
     <div class="grid">
       <div class="card">
         <ol class="steps">
           <li>On the phone, open the <a href="https://github.com/tdater/BLACKBOX-releases/releases/latest">latest release</a> and download the APK under <i>Assets</i>.</li>
           <li>Open the file. When Android asks, allow your browser or file manager to install unknown apps.</li>
-          <li>Tap <b>Install</b>, then open BLACKBOX and load the labeled sample project to look around.</li>
+          <li>Tap <b>Install</b>, then load the labeled sample project to look around.</li>
         </ol>
       </div>
       <div class="card">
-        <h3>Requirements</h3>
-        <p class="muted">Android 10 or newer. Designed for the Galaxy Z Fold, and works on any phone. The on-device AI is optional and needs a model file of roughly 0.5–4 GB plus patience.</p>
+        <h3>Status</h3>
+        <p class="muted">Android 10 or newer, designed for the Galaxy Z Fold8. Every core workflow is built and covered by automated tests, including emulator runs at phone and unfolded-Fold sizes. Real-device behavior, tabletop posture and on-device AI with a real model still need verification. The optional AI needs a 0.5–4 GB model file.</p>
       </div>
     </div>
   </section>
 
-  <section id="whats-new">
-    <h2>What's new <span class="ch">0.1.0</span></h2>
-    <div class="card">
-      <ul class="list">
-        <li>First release: projects, investigations, evidence capture, test plans and runs, compare, resume capsules, claims and fix requests.</li>
-        <li>Regression checklist, search across every project, and app event log import.</li>
-        <li>Optional on-device AI with a model you import.</li>
-        <li>In-app guide with a worked example and FAQ.</li>
-        <li>The flight-recorder look: orange, cyan and carbon.</li>
-      </ul>
+  <section id="philosophy">
+    <div class="manifesto">
+      <p>A chatbot remembers a conversation. A notebook stores information. A testing tool records results. BLACKBOX connects them into one persistent working context:</p>
+      <blockquote>This is my project.<br>This is what I know.<br>This is what changed.<br>This is what happened.<br><b>This is what I should do next.</b></blockquote>
+      <p>Less lost context, better evidence, cleaner experiments, and a more useful next action.</p>
     </div>
   </section>
 
