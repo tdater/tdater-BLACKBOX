@@ -65,7 +65,7 @@ fun TimelineEntity.toModel() = TimelineEvent(id, projectId, investigationId, ses
 fun TimelineEvent.toEntity() = TimelineEntity(id, projectId, investigationId, sessionId, timestamp, sourceTimestamp, type, relatedEntityId, summary)
 
 fun CapsuleEntity.toModel() = ResumeCapsule(id, projectId, investigationId, sourceRevision, generatedAt, objective, knownGoodState,
-    currentFailure, lastTestedChange, nextAction, references, generationMode, userEdited)
+    currentFailure, lastTestedChange, nextAction, sourceRefs, generationMode, userEdited)
 fun ResumeCapsule.toEntity() = CapsuleEntity(id, projectId, investigationId, sourceRevision, generatedAt, objective, knownGoodState,
     currentFailure, lastTestedChange, nextAction, references, generationMode, userEdited)
 
