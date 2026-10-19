@@ -83,6 +83,11 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Free disk space for the emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/node_modules "$AGENT_TOOLSDIRECTORY/CodeQL"
+          df -h /
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -100,6 +105,8 @@ jobs:
           arch: x86_64
           profile: ${{ matrix.profile }}
           disable-animations: true
+          # The default userdata partition (~7 GB) doesn't fit on a hosted runner.
+          disk-size: 4096M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
             if [ -n "${{ matrix.wm_size }}" ]; then adb shell wm size ${{ matrix.wm_size }} && adb shell wm density ${{ matrix.density }}; fi
