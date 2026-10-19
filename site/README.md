@@ -24,5 +24,5 @@ Requires Android 10 or newer.
 None. This is a personal project shared as-is, with no warranty and no support, and bug reports
 aren't taken.
 
-Copyright © 2026 travisdater. All rights reserved. You may download and use the app; the source
-code is not published.
+Copyright © 2026 travisdater. All rights reserved. You may download and use the app. The
+[source code](https://github.com/tdater/tdater-BLACKBOX) is public to read, but no license is granted to copy or reuse it.
