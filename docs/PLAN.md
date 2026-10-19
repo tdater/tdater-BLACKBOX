@@ -33,4 +33,4 @@ Legend: ✅ implemented + automated test · 🟡 implemented, needs device verif
 ## Next
 1. Device pass on the Fold (checklist in TESTING.md), fix what breaks.
 2. ~~Search/filter across records; regression checklist view.~~ Done (`core/search`, `core/regression`, Search + Regression screens). Fail-then-pass only *suggests* a regression check; nothing is auto-added.
-3. Owned-app event import format (JSON) for KITT/RetroTV instrumentation.
+3. ~~Owned-app event import format (JSON) for KITT/RetroTV instrumentation.~~ Done: `core/integrations`, docs/EVENT_FORMAT.md, Quick capture → Import app event log.

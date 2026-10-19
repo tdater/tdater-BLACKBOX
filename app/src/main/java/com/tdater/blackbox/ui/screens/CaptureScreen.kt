@@ -76,6 +76,13 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
             vm.message = "Imported ${uris.size} file(s) into app storage."
         }
     }
+    val importEvents = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        vm.launch("Event log not imported") {
+            val (_, warnings) = vm.repo.importEventLog(ctx.contentResolver, uri, pid, iid, runId)
+            vm.message = "Event log imported." + if (warnings.isNotEmpty()) " " + warnings.joinToString(" ") else ""
+        }
+    }
     val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val path = pendingPhoto ?: return@rememberLauncherForActivityResult
         pendingPhoto = null
@@ -140,6 +147,10 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
                 }, modifier = Modifier.heightIn(min = 56.dp)) { Text("Take photo") }
                 OutlinedButton(onClick = { importFile.launch(arrayOf("*/*")) }, modifier = Modifier.heightIn(min = 56.dp)) {
                     Text("Import screenshot / log / file")
+                }
+                OutlinedButton(onClick = { importEvents.launch(arrayOf("application/json", "application/x-ndjson", "text/*", "application/octet-stream")) },
+                    modifier = Modifier.heightIn(min = 56.dp)) {
+                    Text("Import app event log (.json)")
                 }
             }
             Text("Imported files are copied into BLACKBOX's private storage, so they stay available even if the original is moved or deleted.",

@@ -6,6 +6,8 @@ import androidx.room.withTransaction
 import com.tdater.blackbox.core.archive.IdRemapper
 import com.tdater.blackbox.core.archive.ProjectArchive
 import com.tdater.blackbox.core.archive.ReadArchive
+import com.tdater.blackbox.core.integrations.EventImportException
+import com.tdater.blackbox.core.integrations.EventLogParser
 import com.tdater.blackbox.core.model.BuildReference
 import com.tdater.blackbox.core.model.Claim
 import com.tdater.blackbox.core.model.ClaimClassification
@@ -35,9 +37,11 @@ import com.tdater.blackbox.data.db.BlackboxDatabase
 import com.tdater.blackbox.data.db.fieldEntities
 import com.tdater.blackbox.data.db.toEntity
 import com.tdater.blackbox.data.db.toModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
@@ -125,7 +129,7 @@ class BlackboxRepository(
 
     suspend fun deleteProject(pid: String) {
         db.withTransaction { dao.deleteProject(pid) }
-        attachments.deleteProject(pid)
+        withContext(Dispatchers.IO) { attachments.deleteProject(pid) }
     }
 
     suspend fun loadSample(): String {
@@ -171,7 +175,7 @@ class BlackboxRepository(
     }
 
     /** Copies the content into app storage first, then records it. The source URI is never stored. */
-    suspend fun importEvidence(resolver: ContentResolver, uri: Uri, pid: String, iid: String?, runId: String?): String {
+    suspend fun importEvidence(resolver: ContentResolver, uri: Uri, pid: String, iid: String?, runId: String?): String = withContext(Dispatchers.IO) {
         val id = newId()
         val stored = attachments.importFromUri(resolver, uri, pid, id)
         val mime = stored.mimeType
@@ -192,10 +196,40 @@ class BlackboxRepository(
             attachments.delete(stored.relativePath)
             throw t
         }
-        return id
+        id
     }
 
-    suspend fun addCapturedFile(file: File, pid: String, iid: String?, runId: String?, kind: EvidenceKind, name: String, mime: String, title: String): String {
+    /**
+     * Imports a structured event log from an owned app (docs/EVENT_FORMAT.md). The original file is kept as the
+     * attachment; the evidence text is a bounded rendering, and only notable events reach the timeline.
+     * Returns the evidence id and any parser warnings to show the user.
+     */
+    suspend fun importEventLog(resolver: ContentResolver, uri: Uri, pid: String, iid: String?, runId: String?): Pair<String, List<String>> = withContext(Dispatchers.IO) {
+        val id = newId()
+        val stored = attachments.importFromUri(resolver, uri, pid, id)
+        try {
+            if (stored.bytes > MAX_EVENT_LOG_BYTES) throw EventImportException("Event log is larger than ${MAX_EVENT_LOG_BYTES / (1024 * 1024)} MB.")
+            val log = EventLogParser.parse(attachments.file(stored.relativePath).readText())
+            val now = clock()
+            val plan = EventLogParser.plan(log, { newId() }, pid, iid, id, now)
+            val e = Evidence(id, pid, iid, testRunId = runId, kind = EvidenceKind.LOG, title = plan.title, text = plan.text,
+                originalFilename = stored.displayName, mimeType = stored.mimeType ?: "application/json",
+                attachmentPath = stored.relativePath, attachmentSha256 = stored.sha256, attachmentBytes = stored.bytes,
+                capturedAt = now, importedAt = now, originalTimestamp = plan.originalTimestamp,
+                source = EvidenceSource.INSTRUMENTATION, labels = plan.labels)
+            db.withTransaction {
+                saveEvidence(e, "Imported event log ${stored.displayName}: ${log.events.size} event(s)" +
+                    if (plan.notableSkipped > 0) ", ${plan.notableSkipped} notable event(s) not added to the timeline" else "")
+                plan.timeline.forEach { dao.insertTimeline(it.toEntity()) }
+            }
+            id to log.warnings
+        } catch (t: Throwable) {
+            attachments.delete(stored.relativePath)
+            throw t
+        }
+    }
+
+    suspend fun addCapturedFile(file: File, pid: String, iid: String?, runId: String?, kind: EvidenceKind, name: String, mime: String, title: String): String = withContext(Dispatchers.IO) {
         val id = newId()
         val stored = attachments.adoptFile(file, pid, id, name, mime)
         val e = Evidence(id, pid, iid, testRunId = runId, kind = kind, title = title, originalFilename = name, mimeType = mime,
@@ -207,7 +241,7 @@ class BlackboxRepository(
             attachments.delete(stored.relativePath)
             throw t
         }
-        return id
+        id
     }
 
     suspend fun updateEvidenceText(id: String, title: String, summary: String, labels: List<String>) = db.withTransaction {
@@ -225,7 +259,7 @@ class BlackboxRepository(
             event(e.projectId, e.investigationId, TimelineType.EVIDENCE_WITHDRAWN, e.id, "Evidence withdrawn: ${e.title}")
             e.attachmentPath
         }
-        path?.let { attachments.delete(it) }
+        path?.let { withContext(Dispatchers.IO) { attachments.delete(it) } }
     }
 
     private suspend fun saveEvidence(e: Evidence, summary: String) = db.withTransaction {
@@ -360,11 +394,12 @@ class BlackboxRepository(
 
     // ---------- Archives ----------
 
-    suspend fun exportArchive(pid: String, out: OutputStream) =
+    suspend fun exportArchive(pid: String, out: OutputStream) = withContext(Dispatchers.IO) {
         ProjectArchive.write(loadBundle(pid) ?: throw IllegalStateException("Project not found"), out, clock()) { attachments.open(it) }
+    }
 
     /** Imports as a NEW project (all ids remapped) so nothing existing can be overwritten. */
-    suspend fun importArchive(input: InputStream, stagingDir: File): Pair<String, ReadArchive> {
+    suspend fun importArchive(input: InputStream, stagingDir: File): Pair<String, ReadArchive> = withContext(Dispatchers.IO) {
         val read = ProjectArchive.read(input, stagingDir)
         val (bundle, pathMap) = IdRemapper.remap(read.bundle, ::newId)
         val written = mutableListOf<String>()
@@ -383,7 +418,7 @@ class BlackboxRepository(
         } finally {
             read.attachments.values.forEach { it.delete() }
         }
-        return bundle.project.id to read
+        bundle.project.id to read
     }
 
     private suspend fun insertBundle(b: ProjectBundle) = db.withTransaction {
@@ -403,5 +438,9 @@ class BlackboxRepository(
 
     private suspend fun event(pid: String, iid: String?, type: TimelineType, related: String?, summary: String) {
         dao.insertTimeline(TimelineEvent(newId(), pid, iid, null, clock(), null, type, related, summary).toEntity())
+    }
+
+    companion object {
+        const val MAX_EVENT_LOG_BYTES = 8L * 1024 * 1024
     }
 }

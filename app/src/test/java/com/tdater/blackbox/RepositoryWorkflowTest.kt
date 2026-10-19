@@ -7,6 +7,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.tdater.blackbox.core.handoff.HandoffGenerator
 import com.tdater.blackbox.core.handoff.HandoffOptions
 import com.tdater.blackbox.core.model.EvidenceKind
+import com.tdater.blackbox.core.model.EvidenceSource
+import com.tdater.blackbox.core.model.TimelineType
+import com.tdater.blackbox.core.integrations.EventImportException
 import com.tdater.blackbox.core.model.Measurement
 import com.tdater.blackbox.core.model.RunOutcome
 import com.tdater.blackbox.core.model.TestPlan
@@ -112,6 +115,36 @@ class RepositoryWorkflowTest {
         val att = after.evidence.single { it.attachmentPath != null }
         assertEquals(before.evidence.single { it.attachmentPath != null }.attachmentSha256, att.attachmentSha256)
         assertEquals("attached", repo.attachments.file(att.attachmentPath!!).readText())
+        db.close()
+    }
+
+    @Test
+    fun ownedAppEventLogImportsAsInstrumentationEvidence() = runTest {
+        val (db, repo) = open("d.db")
+        val pid = repo.createProject("KITT", "")
+        val src = File(ctx.cacheDir, "kitt-events.json").apply {
+            writeText("""{"format":"blackbox-events","version":1,"app":"KITT","events":[
+                {"t":"2026-10-18T21:00:00Z","level":"info","type":"obd.connect"},
+                {"t":"2026-10-18T21:01:00Z","level":"error","type":"obd.write","message":"Broken pipe"}]}""")
+        }
+        val (eid, warnings) = repo.importEventLog(ctx.contentResolver, Uri.fromFile(src), pid, null, null)
+        assertTrue(warnings.isEmpty())
+        val b = repo.loadBundle(pid)!!
+        val e = b.evidence.single { it.id == eid }
+        assertEquals(EvidenceKind.LOG, e.kind)
+        assertEquals(EvidenceSource.INSTRUMENTATION, e.source)
+        assertTrue("Broken pipe" in e.text)
+        assertEquals(1_792_357_200_000L, e.originalTimestamp)
+        val imported = b.timeline.filter { it.type == TimelineType.IMPORTED_EVENT }
+        assertEquals(1, imported.size)
+        assertEquals(1_792_357_260_000L, imported.single().sourceTimestamp)
+
+        // Garbage is rejected and leaves no evidence or orphaned attachment behind.
+        val bad = File(ctx.cacheDir, "bad.json").apply { writeText("not an event log") }
+        val failed = runCatching { repo.importEventLog(ctx.contentResolver, Uri.fromFile(bad), pid, null, null) }
+        assertTrue(failed.exceptionOrNull() is EventImportException)
+        assertEquals(1, repo.loadBundle(pid)!!.evidence.size)
+        assertEquals(1, File(attachRoot, pid).listFiles()!!.size)
         db.close()
     }
 }

@@ -17,7 +17,7 @@ Fold-native Android investigation workbench. Source of truth for product scope: 
 - Room schema changes require a `Migration`; no destructive migration. Schemas exported to `app/schemas`.
 
 ## Layout
-- `core/` pure Kotlin/JVM: `model`, `compare`, `resume`, `handoff`, `archive`, `ai`, `sample`, `search`, `regression`.
+- `core/` pure Kotlin/JVM: `model`, `compare`, `resume`, `handoff`, `archive`, `ai`, `sample`, `search`, `regression`, `integrations` (owned-app event log import, docs/EVENT_FORMAT.md).
 - `app/` Android: `data/` (Room, AttachmentStore, Repository), `ui/` (Compose screens, adaptive layout).
 
 ## Commands
