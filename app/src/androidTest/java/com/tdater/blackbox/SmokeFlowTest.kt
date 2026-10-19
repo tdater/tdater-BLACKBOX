@@ -11,7 +11,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tdater.blackbox.ui.MainActivity
@@ -44,7 +43,7 @@ class SmokeFlowTest {
         rule.onNodeWithContentDescription("Guide and FAQ").performClick()
         waitText("Quick start (5 minutes)")
         shot("02-guide")
-        Espresso.pressBack()
+        back()
         waitText(LOAD_SAMPLE)
         rule.onNodeWithText(LOAD_SAMPLE).performClick()
 
@@ -66,7 +65,7 @@ class SmokeFlowTest {
         waitText("1 result(s)", substring = true)
         shot("06-search")
 
-        Espresso.pressBack()
+        back()
         waitText(SAMPLE_PROJECT)
         rule.onNodeWithText(SAMPLE_PROJECT).performClick()
         rule.onNodeWithContentDescription("Project actions").performClick()
@@ -80,10 +79,16 @@ class SmokeFlowTest {
     private fun backToProjects() {
         repeat(4) {
             if (rule.onAllNodesWithContentDescription("Search records").fetchSemanticsNodes().isNotEmpty()) return
-            Espresso.pressBack()
+            back()
             rule.waitForIdle()
         }
         rule.onNodeWithContentDescription("Search records").assertExists()
+    }
+
+    /** System back through the activity's dispatcher (no Espresso window-focus requirement). */
+    private fun back() {
+        rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        rule.waitForIdle()
     }
 
     private fun waitText(text: String, substring: Boolean = false) {

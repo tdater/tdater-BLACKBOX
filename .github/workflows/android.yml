@@ -109,8 +109,9 @@ jobs:
           disk-size: 4096M
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           script: |
-            if [ -n "${{ matrix.wm_size }}" ]; then adb shell wm size ${{ matrix.wm_size }} && adb shell wm density ${{ matrix.density }}; fi
-            ./gradlew :app:connectedDebugAndroidTest --stacktrace; status=$?; adb pull /data/local/tmp/blackbox-shots screenshots || true; adb logcat -d > logcat.txt || true; exit $status
+            if [ -n "${{ matrix.wm_size }}" ]; then adb shell wm size ${{ matrix.wm_size }} && adb shell wm density ${{ matrix.density }} && sleep 10; fi
+            adb shell input keyevent 82; adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS; adb shell settings put secure immersive_mode_confirmations confirmed
+            ./gradlew :app:connectedDebugAndroidTest --stacktrace; status=$?; adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" || true; adb pull /data/local/tmp/blackbox-shots screenshots || true; adb logcat -d > logcat.txt || true; exit $status
 
       - name: Upload screenshots and reports
         if: always()
