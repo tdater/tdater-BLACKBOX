@@ -13,6 +13,7 @@ import com.tdater.blackbox.ui.screens.AiScreen
 import com.tdater.blackbox.ui.screens.CaptureScreen
 import com.tdater.blackbox.ui.screens.ChecklistsScreen
 import com.tdater.blackbox.ui.screens.QuickCaptureScreen
+import com.tdater.blackbox.ui.screens.NetToolsScreen
 import com.tdater.blackbox.ui.screens.ReadingsScreen
 import com.tdater.blackbox.ui.screens.CompareScreen
 import com.tdater.blackbox.ui.screens.ConfigScreen
