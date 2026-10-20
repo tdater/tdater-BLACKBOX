@@ -389,6 +389,7 @@ Confirm the fix with the adapter in BLE mode before closing.</pre>
       <div class="card"><h3>PDF reports and backups</h3><p class="muted">One tap turns a problem into a PDF with photos. Pick a backup folder (SD card, USB stick, or one your sync app watches) and BLACKBOX keeps an archive per project there.</p></div>
       <div class="card"><h3>Locked down</h3><p class="muted">The records database is encrypted with a key held by Android Keystore. Optional fingerprint or screen-lock gate, and a switch that hides BLACKBOX from the recent-apps screen.</p></div>
       <div class="card"><h3>Four looks</h3><p class="muted">Flight recorder, Daylight, Midnight, or colours taken from your wallpaper.</p></div>
+      <div class="card"><h3>BLACKBOX Net (optional)</h3><p class="muted">A separate download with ping, port check and DNS lookup that save straight into your records. It's the only edition with internet permission, installs next to the regular app and keeps its own records. Skip it and BLACKBOX stays fully offline.</p></div>
     </div>
   </section>
 
@@ -458,7 +459,7 @@ Confirm the fix with the adapter in BLE mode before closing.</pre>
   <section id="privacy">
     <h2>Privacy and local-first <span class="ch">NO ACCOUNT · NO CLOUD</span></h2>
     <div class="grid">
-      <div class="card"><h3>Local-only projects</h3><p class="muted">Excluded from every AI request. The rule lives in the app's request-handling logic, not just the interface. BLACKBOX doesn't even request internet permission, and every release is checked for that automatically.</p></div>
+      <div class="card"><h3>Local-only projects</h3><p class="muted">Excluded from every AI request. The rule lives in the app's request-handling logic, not just the interface. BLACKBOX doesn't even request internet permission, and every release is checked for that automatically. Only the optional BLACKBOX Net download has it, for its network tools.</p></div>
       <div class="card"><h3>Deliberate sharing</h3><p class="muted">You review what goes into a handoff or export. Private attachments, sensitive logs and credentials are never included automatically; a scanner flags likely secrets before you share.</p></div>
       <div class="card"><h3>No silent monitoring</h3><p class="muted">BLACKBOX doesn't watch your device or collect activity from other apps. Any future capture feature will use supported access methods and explicit action.</p></div>
       <div class="card"><h3>Honest boundaries</h3><p class="muted">Local-only controls what the app uploads. It isn't a claim of complete device security or forensic protection. Handle work information according to your organization's policies.</p></div>
@@ -500,11 +501,11 @@ Confirm the fix with the adapter in BLE mode before closing.</pre>
   </section>
 
   <section id="install">
-    <h2>Install <span class="ch">0.2.0 · ACTIVE DEVELOPMENT</span></h2>
+    <h2>Install <span class="ch">0.2.1 · ACTIVE DEVELOPMENT</span></h2>
     <div class="grid">
       <div class="card">
         <ol class="steps">
-          <li>On the phone, open the <a href="https://github.com/tdater/BLACKBOX-releases/releases/latest">latest release</a> and download the APK under <i>Assets</i>.</li>
+          <li>On the phone, open the <a href="https://github.com/tdater/BLACKBOX-releases/releases/latest">latest release</a> and download <b>BLACKBOX-&lt;version&gt;.apk</b> under <i>Assets</i>. Want the network tools too? Also grab <b>BLACKBOX-Net-&lt;version&gt;.apk</b>.</li>
           <li>Open the file. When Android asks, allow your browser or file manager to install unknown apps.</li>
           <li>Tap <b>Install</b>, then pick a template or load the labeled sample project to look around. Updating from 0.1.0 is designed to keep your records and encrypts them on first launch; export an archive first if they matter.</li>
         </ol>
