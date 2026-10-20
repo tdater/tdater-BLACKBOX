@@ -113,6 +113,8 @@ private fun ProjectMenu(vm: MainViewModel, b: ProjectBundle, nav: NavHostControl
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
         DropdownMenuItem(text = { Text(lingo.buildsAndEnv) }, onClick = { open = false; nav.navigate(Routes.config(b.project.id)) })
         DropdownMenuItem(text = { Text("Readings & charts") }, onClick = { open = false; nav.navigate(Routes.readings(b.project.id)) })
+        if (com.tdater.blackbox.BuildConfig.NET_TOOLS)
+            DropdownMenuItem(text = { Text("Network tools") }, onClick = { open = false; nav.navigate(Routes.net(b.project.id)) })
         DropdownMenuItem(text = { Text(lingo.regression) }, onClick = { open = false; nav.navigate(Routes.regression(b.project.id)) })
         DropdownMenuItem(text = { Text("Quick capture (no ${lingo.investigation.lowercase()})") }, onClick = { open = false; nav.navigate(Routes.capture(b.project.id, null)) })
         DropdownMenuItem(text = { Text("Checklists") }, onClick = { open = false; nav.navigate(Routes.CHECKLISTS) })

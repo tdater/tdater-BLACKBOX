@@ -78,6 +78,7 @@ object HelpContent {
                 "Dictate types by voice with your phone's offline speech recognition (Android 12+ with an offline speech model).",
                 "PDF report: one tap turns a problem into a PDF with photos, ready to print or send.",
                 "Settings → Look & feel switches colours and between everyday and technical wording.",
+                "BLACKBOX Net is a separate download with ping, port check and DNS lookup (project menu → Network tools). It's the only edition with internet permission, and it keeps its own records apart from regular BLACKBOX.",
             ),
         )),
         HelpTopic("Quick start (5 minutes)", "From nothing to a recorded test run.", listOf(

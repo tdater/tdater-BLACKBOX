@@ -23,6 +23,23 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
     }
 
+    // "standard" never touches the network. "net" is the same app plus ping / port check / DNS tools and the
+    // INTERNET permission they need, installed side by side as "BLACKBOX Net" with its own records.
+    flavorDimensions += "edition"
+    productFlavors {
+        create("standard") {
+            dimension = "edition"
+            isDefault = true
+            buildConfigField("boolean", "NET_TOOLS", "false")
+        }
+        create("net") {
+            dimension = "edition"
+            applicationIdSuffix = ".net"
+            versionNameSuffix = "-net"
+            buildConfigField("boolean", "NET_TOOLS", "true")
+        }
+    }
+
     signingConfigs {
         // Shared debug key so every CI and release APK has the same signature and installs over the last one.
         // It's a debug key, deliberately public; there is still no production key.

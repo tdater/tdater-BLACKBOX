@@ -40,6 +40,7 @@ object Routes {
     fun capture(pid: String, iid: String?, runId: String? = null, mode: String? = null) =
         "capture/$pid?iid=${iid.orEmpty()}&run=${runId.orEmpty()}&mode=${mode.orEmpty()}"
     fun readings(pid: String, iid: String? = null) = "readings/$pid?iid=${iid.orEmpty()}"
+    fun net(pid: String, iid: String? = null) = "net/$pid?iid=${iid.orEmpty()}"
     fun plan(pid: String, iid: String, planId: String? = null) = "plan/$pid/$iid?plan=${planId.orEmpty()}"
     fun run(pid: String, runId: String) = "run/$pid/$runId"
     fun compare(pid: String, iid: String) = "compare/$pid/$iid"
@@ -79,6 +80,9 @@ fun BlackboxNav(vm: MainViewModel, nav: NavHostController = rememberNavControlle
         }
         composable("readings/{pid}?iid={iid}", listOf(navArgument("pid") {}, opt("iid"))) { e ->
             ReadingsScreen(vm, e.arguments!!.getString("pid")!!, e.arguments?.getString("iid")?.ifBlank { null }, back)
+        }
+        composable("net/{pid}?iid={iid}", listOf(navArgument("pid") {}, opt("iid"))) { e ->
+            NetToolsScreen(vm, e.arguments!!.getString("pid")!!, e.arguments?.getString("iid")?.ifBlank { null }, back)
         }
         composable(Routes.SETTINGS) { SettingsScreen(vm, back, openHelp = { nav.navigate(Routes.HELP) }, openProject = { nav.navigate(Routes.project(it)) { popUpTo(Routes.PROJECTS) } }) }
         composable(Routes.HELP) { HelpScreen(back) }

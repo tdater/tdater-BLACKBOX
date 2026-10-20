@@ -29,26 +29,28 @@ jobs:
         run: ./gradlew :core:test --stacktrace
 
       - name: App unit tests (Robolectric)
-        run: ./gradlew :app:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testStandardDebugUnitTest --stacktrace
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
-      - name: APK must not request INTERNET
+      - name: Standard APK must not request INTERNET; Net APK must
         run: |
           AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
-          "$AAPT2" dump permissions app/build/outputs/apk/debug/app-debug.apk | tee perms.txt
-          if grep -q "android.permission.INTERNET" perms.txt; then echo "::error::INTERNET permission found in APK"; exit 1; fi
+          "$AAPT2" dump permissions app/build/outputs/apk/standard/debug/app-standard-debug.apk | tee perms.txt
+          if grep -q "android.permission.INTERNET" perms.txt; then echo "::error::INTERNET permission found in standard APK"; exit 1; fi
+          "$AAPT2" dump permissions app/build/outputs/apk/net/debug/app-net-debug.apk | tee perms-net.txt
+          grep -q "android.permission.INTERNET" perms-net.txt || { echo "::error::Net APK is missing INTERNET"; exit 1; }
 
       - name: Lint
-        run: ./gradlew :app:lintDebug
+        run: ./gradlew :app:lintStandardDebug
         continue-on-error: true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: blackbox-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/*/debug/*.apk
           if-no-files-found: error
 
       - name: Upload test and lint reports
@@ -101,7 +103,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Build app and test APKs
-        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+        run: ./gradlew :app:assembleStandardDebug :app:assembleStandardDebugAndroidTest --stacktrace
 
       - name: Run instrumented smoke test
         uses: reactivecircus/android-emulator-runner@v2
@@ -117,7 +119,7 @@ jobs:
           script: |
             if [ -n "${{ matrix.wm_size }}" ]; then adb shell wm size ${{ matrix.wm_size }} && adb shell wm density ${{ matrix.density }} && sleep 10; fi
             adb shell input keyevent 82; adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS; adb shell settings put secure immersive_mode_confirmations confirmed
-            ./gradlew :app:connectedDebugAndroidTest --stacktrace; status=$?; adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" || true; adb pull /data/local/tmp/blackbox-shots screenshots || true; adb logcat -d > logcat.txt || true; adb logcat -d -b crash | tail -80 || true; exit $status
+            ./gradlew :app:connectedStandardDebugAndroidTest --stacktrace; status=$?; adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" || true; adb pull /data/local/tmp/blackbox-shots screenshots || true; adb logcat -d > logcat.txt || true; adb logcat -d -b crash | tail -80 || true; exit $status
 
       - name: Upload screenshots and reports
         if: always()

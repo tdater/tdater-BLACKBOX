@@ -131,6 +131,7 @@ fun InvestigationWorkbench(vm: MainViewModel, b: ProjectBundle, inv: Investigati
                 OutlinedAction(lingo.resume) { nav.navigate(Routes.resume(pid, inv.id)) }
                 OutlinedAction(lingo.compare) { nav.navigate(Routes.compare(pid, inv.id)) }
                 OutlinedAction("Readings") { nav.navigate(Routes.readings(pid, inv.id)) }
+                if (com.tdater.blackbox.BuildConfig.NET_TOOLS) OutlinedAction("Network tools") { nav.navigate(Routes.net(pid, inv.id)) }
                 OutlinedAction(if (inv.followUpAt == null) "Remind me" else "Reminder") { remind = true }
                 OutlinedAction("PDF report") {
                     exportPdf.launch("BLACKBOX - " + inv.title.replace(Regex("[^A-Za-z0-9 _-]+"), "").take(40) + ".pdf")
