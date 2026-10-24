@@ -16,7 +16,12 @@ import com.tdater.blackbox.core.ai.AiResult
 import com.tdater.blackbox.core.ai.ContextItem
 import com.tdater.blackbox.core.ai.ContextPacket
 import com.tdater.blackbox.core.model.EvidenceKind
+import com.tdater.blackbox.core.model.Investigation
 import com.tdater.blackbox.core.model.Project
+import com.tdater.blackbox.system.Backup
+import com.tdater.blackbox.system.Reminders
+import com.tdater.blackbox.ui.components.Wording
+import com.tdater.blackbox.ui.theme.ThemeChoice
 import kotlinx.coroutines.Job
 import android.os.Build
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +46,39 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val models = blackbox.models
 
     var message by mutableStateOf<String?>(null)
+
+    // ---- Look and wording (state here so changes apply immediately everywhere) ----
+    var theme by mutableStateOf(settings.theme)
+        private set
+    var wording by mutableStateOf(settings.wording)
+        private set
+    fun updateTheme(t: ThemeChoice) { theme = t; settings.theme = t }
+    fun updateWording(w: Wording) { wording = w; settings.wording = w }
+
+    /** A capture mode requested from the widget or quick-settings tile, waiting for navigation. */
+    /** App lock: starts locked on a cold start when enabled; the activity re-locks after time in the background. */
+    var locked by mutableStateOf(settings.appLock)
+    var hiddenAt = 0L
+    var pendingQuick by mutableStateOf<String?>(null)
+    /** A project/investigation to open (from a reminder notification). */
+    var pendingOpen by mutableStateOf<Pair<String, String?>?>(null)
+
+    val reminders = Reminders(app)
+    val backup = Backup(app, repo, settings)
+
+    /** Saves (or clears, with null) a follow-up and schedules the matching local notification. */
+    fun setFollowUp(inv: Investigation, at: Long?, note: String) = launch("Reminder not saved") {
+        repo.setFollowUp(inv.id, at, note)
+        if (at == null) reminders.cancel(inv.id) else reminders.schedule(inv.copy(followUpAt = at, followUpNote = note))
+        message = if (at == null) "Reminder cleared." else "Reminder set."
+    }
+
+    /** Called when the app goes to the background: back up if a folder is set and something changed. */
+    fun backupIfDue() {
+        saveScope.launch {
+            try { if (backup.isDue()) backup.backUpNow() } catch (_: Exception) { /* shown next time in Settings */ }
+        }
+    }
     /** Shared-in content awaiting a project choice; survives rotation/fold. */
     var pendingShare by mutableStateOf<PendingShare?>(null)
 

@@ -45,7 +45,9 @@ import com.tdater.blackbox.core.model.PrivacyPolicy
 import com.tdater.blackbox.core.model.ProjectBundle
 import com.tdater.blackbox.ui.MainViewModel
 import com.tdater.blackbox.ui.Routes
+import com.tdater.blackbox.core.templates.ProjectTemplates
 import com.tdater.blackbox.ui.components.BbTopBar
+import com.tdater.blackbox.ui.components.LocalLingo
 import com.tdater.blackbox.ui.components.ConfirmDialog
 import com.tdater.blackbox.ui.components.EmptyState
 import com.tdater.blackbox.ui.components.Field
@@ -96,6 +98,7 @@ private fun ProjectMenu(vm: MainViewModel, b: ProjectBundle, nav: NavHostControl
     var open by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
+    val lingo = LocalLingo.current
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         vm.launch("Export failed") {
@@ -108,9 +111,13 @@ private fun ProjectMenu(vm: MainViewModel, b: ProjectBundle, nav: NavHostControl
     }
     IconButton(onClick = { open = true }) { Icon(Icons.Default.MoreVert, contentDescription = "Project actions") }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-        DropdownMenuItem(text = { Text("Builds & environments") }, onClick = { open = false; nav.navigate(Routes.config(b.project.id)) })
-        DropdownMenuItem(text = { Text("Regression checklist") }, onClick = { open = false; nav.navigate(Routes.regression(b.project.id)) })
-        DropdownMenuItem(text = { Text("Quick capture (no investigation)") }, onClick = { open = false; nav.navigate(Routes.capture(b.project.id, null)) })
+        DropdownMenuItem(text = { Text(lingo.buildsAndEnv) }, onClick = { open = false; nav.navigate(Routes.config(b.project.id)) })
+        DropdownMenuItem(text = { Text("Readings & charts") }, onClick = { open = false; nav.navigate(Routes.readings(b.project.id)) })
+        if (com.tdater.blackbox.BuildConfig.NET_TOOLS)
+            DropdownMenuItem(text = { Text("Network tools") }, onClick = { open = false; nav.navigate(Routes.net(b.project.id)) })
+        DropdownMenuItem(text = { Text(lingo.regression) }, onClick = { open = false; nav.navigate(Routes.regression(b.project.id)) })
+        DropdownMenuItem(text = { Text("Quick capture (no ${lingo.investigation.lowercase()})") }, onClick = { open = false; nav.navigate(Routes.capture(b.project.id, null)) })
+        DropdownMenuItem(text = { Text("Checklists") }, onClick = { open = false; nav.navigate(Routes.CHECKLISTS) })
         DropdownMenuItem(
             text = { Text(if (b.project.privacyPolicy == PrivacyPolicy.LOCAL_ONLY) "Policy: LOCAL ONLY (tap to allow AI)" else "Policy: AI ALLOWED (tap for local only)") },
             onClick = {
@@ -136,20 +143,22 @@ private fun ProjectMenu(vm: MainViewModel, b: ProjectBundle, nav: NavHostControl
 @Composable
 private fun InvestigationList(vm: MainViewModel, b: ProjectBundle, selected: String?, modifier: Modifier, onSelect: (String) -> Unit) {
     var creating by rememberSaveable { mutableStateOf(false) }
+    val lingo = LocalLingo.current
+    val template = ProjectTemplates.byId(b.project.templateId)
     LazyColumn(modifier.padding(horizontal = 12.dp)) {
         item {
             if (b.project.isSample) Tag("SAMPLE · SYNTHETIC DATA — not a real investigation", Tone.WARN)
             if (b.project.objective.isNotBlank()) {
-                SectionHeader("Objective")
+                SectionHeader("Goal")
                 Text(b.project.objective, style = MaterialTheme.typography.bodyMedium)
             }
-            SectionHeader("Investigations") {
+            template.note?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            SectionHeader(lingo.investigations) {
                 TextButton(onClick = { creating = true }) { Icon(Icons.Default.Add, null); Text("New") }
             }
             if (b.investigations.isEmpty()) {
-                Text("No investigations yet. Start one for a specific problem, e.g. \"OBD values freeze after screen-off\".",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Button(onClick = { creating = true }, modifier = Modifier.padding(vertical = 8.dp)) { Text("Start investigation") }
+                Text(lingo.investigationHint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(onClick = { creating = true }, modifier = Modifier.padding(vertical = 8.dp)) { Text(lingo.startInvestigation) }
             }
         }
         val sorted = b.investigations.sortedWith(compareBy<com.tdater.blackbox.core.model.Investigation> {
@@ -176,29 +185,30 @@ private fun InvestigationList(vm: MainViewModel, b: ProjectBundle, selected: Str
         }
         item { HorizontalDivider(Modifier.padding(vertical = 12.dp)) }
         item {
-            Text("${b.evidence.count { it.investigationId == null && it.withdrawnAt == null }} unassigned capture(s) in this project",
+            Text("${b.evidence.count { it.investigationId == null && it.withdrawnAt == null }} capture(s) not tied to a ${lingo.investigation.lowercase()}",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-    if (creating) NewInvestigationDialog(onDismiss = { creating = false }) { t, p, d ->
+    if (creating) NewInvestigationDialog(lingo.newInvestigation, template.exampleProblems.firstOrNull() ?: "OBD values freeze after screen-off",
+        onDismiss = { creating = false }) { t, p, d ->
         creating = false
         vm.launch { onSelect(vm.repo.createInvestigation(b.project.id, t, p, d)) }
     }
 }
 
 @Composable
-private fun NewInvestigationDialog(onDismiss: () -> Unit, onCreate: (String, String, String) -> Unit) {
+private fun NewInvestigationDialog(heading: String, example: String, onDismiss: () -> Unit, onCreate: (String, String, String) -> Unit) {
     var title by rememberSaveable { mutableStateOf("") }
     var problem by rememberSaveable { mutableStateOf("") }
     var desired by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New investigation") },
+        title = { Text(heading) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Field("Title", title, { title = it }, singleLine = true, placeholder = "OBD values freeze after screen-off")
-                Field("Problem statement (what happens)", problem, { problem = it }, minLines = 2)
-                Field("Desired outcome", desired, { desired = it }, minLines = 1)
+                Field("Title", title, { title = it }, singleLine = true, placeholder = example)
+                Field("What happens?", problem, { problem = it }, minLines = 2)
+                Field("What should happen instead?", desired, { desired = it }, minLines = 1)
             }
         },
         confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { onCreate(title, problem, desired) }) { Text("Create") } },

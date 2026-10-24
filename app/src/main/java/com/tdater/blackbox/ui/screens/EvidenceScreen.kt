@@ -39,6 +39,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.tdater.blackbox.core.model.EvidenceKind
+import com.tdater.blackbox.system.Vision
 import com.tdater.blackbox.ui.MainViewModel
 import com.tdater.blackbox.ui.components.BbTopBar
 import com.tdater.blackbox.ui.components.ConfirmDialog
@@ -65,7 +66,7 @@ private fun decodeBounded(file: File): Bitmap? {
 }
 
 @Composable
-fun EvidenceScreen(vm: MainViewModel, pid: String, eid: String, back: () -> Unit) {
+fun EvidenceScreen(vm: MainViewModel, pid: String, eid: String, back: () -> Unit, openHit: (String, String?, String?) -> Unit = { _, _, _ -> }) {
     val bundle by rememberBundle(vm, pid)
     val ctx = LocalContext.current
     val b = bundle
@@ -116,6 +117,29 @@ fun EvidenceScreen(vm: MainViewModel, pid: String, eid: String, back: () -> Unit
                 val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, e.mimeType ?: "*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 try { ctx.startActivity(Intent.createChooser(view, "Open with")) } catch (_: ActivityNotFoundException) { vm.message = "No app can open this file type." }
             }) { Text("Open with…") }
+            if (file != null && e.withdrawnAt == null && (e.kind == EvidenceKind.PHOTO || e.kind == EvidenceKind.IMAGE_IMPORT)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(enabled = !vm.busy, onClick = {
+                        vm.launch("Couldn't read text") {
+                            val text = withContext(Dispatchers.Default) { Vision.readText(ctx, file) }
+                            if (text.isBlank()) vm.message = "No readable text found in this photo."
+                            else { vm.repo.addDerivedText(e.id, EvidenceKind.TEXT, "Text from ${e.title}", text, listOf("read from photo")); vm.message = "Text saved as a new note." }
+                        }
+                    }) { Text("Read text") }
+                    OutlinedButton(enabled = !vm.busy, onClick = {
+                        vm.launch("Couldn't scan") {
+                            val codes = withContext(Dispatchers.Default) { Vision.scanCodes(ctx, file) }
+                            if (codes.isEmpty()) vm.message = "No barcode or QR code found."
+                            else { vm.repo.addDerivedText(e.id, EvidenceKind.TEXT, "Code: ${codes.first().value.take(60)}", Vision.describe(codes), listOf("scanned code")); vm.message = "Found ${codes.size} code(s)." }
+                        }
+                    }) { Text("Find barcodes / QR") }
+                }
+                Text("Runs on this phone. The photo is kept as-is; results are saved as a separate note pointing back here.",
+                    style = MaterialTheme.typography.labelSmall)
+            }
+            e.derivedFromId?.let { src -> b.evidence.firstOrNull { it.id == src } }?.let { src ->
+                LabeledValue("Made from", src.title)
+            }
 
             SectionHeader("Details")
             LabeledValue("Summary", e.userSummary.ifBlank { "—" })
@@ -130,6 +154,13 @@ fun EvidenceScreen(vm: MainViewModel, pid: String, eid: String, back: () -> Unit
             LabeledValue("Record id", e.id, mono = true)
             val citing = b.claims.filter { eid in it.evidenceIds }
             if (citing.isNotEmpty()) LabeledValue("Cited by", "${citing.size} claim(s)")
+
+            if (e.withdrawnAt == null && (e.title.length + e.text.length) > 8) {
+                SimilarSection(vm, "${e.title}\n${e.text.take(4_000)}\n${e.userSummary}", excludeInvestigationId = e.investigationId,
+                    excludeIds = setOf(e.id)) { h ->
+                    openHit(h.projectId, h.investigationId, if (h.kind == com.tdater.blackbox.core.search.HitKind.EVIDENCE) h.id else null)
+                }
+            }
 
             if (e.withdrawnAt == null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { editing = true; title = e.title; summary = e.userSummary; labels = e.labels.joinToString(", ") }) { Text("Edit details") }

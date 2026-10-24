@@ -42,7 +42,8 @@ fun RegressionScreen(vm: MainViewModel, pid: String, back: () -> Unit, openRun: 
     var starting by rememberSaveable { mutableStateOf(false) }
     val b = bundle
 
-    Scaffold(topBar = { BbTopBar("Regression checklist", b?.project?.title, onBack = back) }) { pad ->
+    val lingo = com.tdater.blackbox.ui.components.LocalLingo.current
+    Scaffold(topBar = { BbTopBar(lingo.regression, b?.project?.title, onBack = back) }) { pad ->
         if (b == null) return@Scaffold
         val c = RegressionChecklistBuilder.build(b)
         val latestBuild = b.builds.firstOrNull { it.id == c.latestBuildId }

@@ -37,6 +37,8 @@ data class ProjectEntity(
     val objective: String,
     val labels: List<String>,
     val isSample: Boolean,
+    val templateId: String,
+    val fieldKeys: List<String>,
 )
 
 @Entity(
@@ -57,6 +59,8 @@ data class InvestigationEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val revision: Long,
+    val followUpAt: Long?,
+    val followUpNote: String,
 )
 
 @Entity(
@@ -272,4 +276,19 @@ data class HandoffEntity(
     val format: String,
     val content: String,
     val privacyReview: HandoffReview,
+)
+
+/** Saved checklist (SOP). Not tied to a project, so deleting a project never deletes it. */
+@Entity(tableName = "saved_procedure")
+data class ProcedureEntity(
+    @PrimaryKey val id: String,
+    val title: String,
+    val description: String,
+    val steps: List<String>,
+    val expectedResult: String,
+    val templateId: String,
+    val sourceProjectId: String?,
+    val sourcePlanId: String?,
+    val createdAt: Long,
+    val updatedAt: Long,
 )

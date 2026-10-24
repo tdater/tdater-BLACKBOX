@@ -1,7 +1,10 @@
 package com.tdater.blackbox.ui.screens
 
+import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -12,7 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedButton
@@ -36,12 +42,40 @@ import com.tdater.blackbox.ui.MainViewModel
 import com.tdater.blackbox.ui.components.BbTopBar
 import com.tdater.blackbox.ui.components.InfoCard
 import com.tdater.blackbox.ui.components.SectionHeader
+import com.tdater.blackbox.ui.components.Wording
+import com.tdater.blackbox.ui.components.fmtTime
+import com.tdater.blackbox.system.AppLock
+import com.tdater.blackbox.system.Backup
+import com.tdater.blackbox.data.db.BlackboxDatabase
+import com.tdater.blackbox.data.db.DbEncryption
+import com.tdater.blackbox.ui.theme.ThemeChoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit) {
+fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit, openProject: (String) -> Unit = {}) {
     val ctx = LocalContext.current
+    var hide by remember { mutableStateOf(vm.settings.hideInRecents) }
+    var lock by remember { mutableStateOf(vm.settings.appLock) }
+    var tree by remember { mutableStateOf(vm.settings.backupTree) }
+    var auto by remember { mutableStateOf(vm.settings.autoBackup) }
+    var lastBackup by remember { mutableLongStateOf(vm.settings.lastBackupAt) }
+    var found by remember { mutableStateOf<List<Backup.Found>?>(null) }
+    var restoring by remember { mutableStateOf<Backup.Found?>(null) }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri != null) {
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            runCatching { ctx.contentResolver.takePersistableUriPermission(uri, flags) }
+            tree?.let { old -> if (old != uri.toString()) runCatching { ctx.contentResolver.releasePersistableUriPermission(Uri.parse(old), flags) } }
+            vm.settings.backupTree = uri.toString(); tree = uri.toString(); found = null
+            vm.launch("Backup failed") {
+                val r = vm.backup.backUpNow()
+                lastBackup = vm.settings.lastBackupAt
+                vm.message = "Backed up ${r.projects} project(s) to ${r.folderName}."
+            }
+        }
+    }
     var ai by remember { mutableStateOf(vm.settings.aiEnabled) }
     var used by remember { mutableLongStateOf(-1L) }
     var free by remember { mutableLongStateOf(-1L) }
@@ -64,6 +98,58 @@ fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit) {
     Scaffold(topBar = { BbTopBar("Settings", null, onBack = back) }) { pad ->
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp).widthIn(max = 720.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionHeader("Look & feel")
+            InfoCard {
+                Text("Colours", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ThemeChoice.entries.filter { it != ThemeChoice.WALLPAPER || Build.VERSION.SDK_INT >= 31 }.forEach { t ->
+                        FilterChip(selected = vm.theme == t, onClick = { vm.updateTheme(t) }, label = { Text(t.label) })
+                    }
+                }
+                Text(vm.theme.blurb, style = MaterialTheme.typography.bodySmall)
+                Text("Words", style = MaterialTheme.typography.titleSmall)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Wording.entries.forEach { w ->
+                        FilterChip(selected = vm.wording == w, onClick = { vm.updateWording(w) }, label = { Text(w.label) })
+                    }
+                }
+                Text(vm.wording.blurb, style = MaterialTheme.typography.bodySmall)
+            }
+            SectionHeader("Backup")
+            InfoCard {
+                Text(if (tree == null) "No backup folder yet." else "Backing up to: ${Uri.parse(tree).lastPathSegment?.substringAfterLast(':') ?: "chosen folder"}")
+                if (tree != null) Text(if (lastBackup == 0L) "Not backed up yet." else "Last backup ${fmtTime(lastBackup)}",
+                    style = MaterialTheme.typography.labelSmall)
+                Text("Pick a folder (an SD card, a USB stick, or a folder your Drive/Dropbox/Syncthing app syncs) and BLACKBOX keeps one archive per project there. " +
+                    "BLACKBOX itself never goes online; whatever syncs that folder is your call.",
+                    style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(enabled = !vm.busy, onClick = { pickFolder.launch(null) }) { Text(if (tree == null) "Choose folder" else "Change folder") }
+                    if (tree != null) OutlinedButton(enabled = !vm.busy, onClick = {
+                        vm.launch("Backup failed") {
+                            val r = vm.backup.backUpNow()
+                            lastBackup = vm.settings.lastBackupAt
+                            vm.message = "Backed up ${r.projects} project(s), ${mb(r.bytes)}."
+                        }
+                    }) { Text("Back up now") }
+                }
+                if (tree != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Back up automatically when I leave the app (if something changed)", modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodySmall)
+                        Switch(checked = auto, onCheckedChange = { auto = it; vm.settings.autoBackup = it })
+                    }
+                    TextButton(enabled = !vm.busy, onClick = { vm.launch("Couldn't read the backup folder") { found = vm.backup.list() } }) {
+                        Text("Restore from this folder…")
+                    }
+                    found?.let { list ->
+                        if (list.isEmpty()) Text("No BLACKBOX archives in that folder.", style = MaterialTheme.typography.bodySmall)
+                        list.forEach { f ->
+                            TextButton(onClick = { restoring = f }) { Text("${f.name} · ${mb(f.bytes)}") }
+                        }
+                    }
+                }
+            }
             SectionHeader("AI")
             InfoCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -94,12 +180,37 @@ fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit) {
             }
             SectionHeader("Privacy & storage")
             InfoCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Lock BLACKBOX")
+                        Text("Ask for fingerprint, face or your screen lock when opening, and after ${AppLock.RELOCK_AFTER_MS / 1000}s away.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = lock, onCheckedChange = {
+                        if (it && !AppLock.canUse(ctx)) vm.message = "Set up a screen lock (PIN, pattern or fingerprint) in Android settings first."
+                        else { lock = it; vm.settings.appLock = it }
+                    })
+                }
+                Text(if (DbEncryption.isEncrypted(ctx, BlackboxDatabase.NAME)) "Records database: encrypted (SQLCipher, key held by Android Keystore)."
+                    else "Records database: not encrypted on this phone.", style = MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Hide in recent apps")
+                        Text("Blanks BLACKBOX in the app switcher and blocks screenshots.", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = hide, onCheckedChange = {
+                        hide = it; vm.settings.hideInRecents = it
+                        (ctx as? Activity)?.window?.let { w ->
+                            if (it) w.addFlags(WindowManager.LayoutParams.FLAG_SECURE) else w.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                    })
+                }
                 Text("Attachments stored: ${mb(used)} · free on device: ${mb(free)}")
                 Text("Projects default to LOCAL ONLY. Android cloud backup and device-to-device transfer are disabled for BLACKBOX data, so records live only on this phone and in archives you export yourself.",
                     style = MaterialTheme.typography.bodySmall)
                 Text("LOCAL ONLY is an upload policy, not forensic protection of the device. No analytics, ads or telemetry are included.",
                     style = MaterialTheme.typography.bodySmall)
-                Text("Back up a project with ⋮ → Export project archive. Import from the Projects screen; imports always become a new project.",
+                Text("Export one project with ⋮ → Export project archive, or set a backup folder above. Imports and restores always become a new project.",
                     style = MaterialTheme.typography.bodySmall)
             }
             SectionHeader("Help")
@@ -123,6 +234,18 @@ fun SettingsScreen(vm: MainViewModel, back: () -> Unit, openHelp: () -> Unit) {
             Text("BLACKBOX ${BuildConfig.VERSION_NAME} — your projects remember what happened, what changed, and what to do next.",
                 style = MaterialTheme.typography.bodySmall)
         }
+    }
+    restoring?.let { f ->
+        AlertDialog(
+            onDismissRequest = { restoring = null },
+            title = { Text("Restore ${f.name}?") },
+            text = { Text("It comes back as a new project next to what you already have. Nothing existing is overwritten. Saved checklists in the folder are merged in.") },
+            confirmButton = { TextButton(onClick = {
+                restoring = null
+                vm.launch("Restore failed") { val pid = vm.backup.restore(f); vm.message = "Restored."; openProject(pid) }
+            }) { Text("Restore") } },
+            dismissButton = { TextButton(onClick = { restoring = null }) { Text("Cancel") } },
+        )
     }
     if (confirmRemove) AlertDialog(
         onDismissRequest = { confirmRemove = false },

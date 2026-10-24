@@ -25,7 +25,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,6 +43,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.tdater.blackbox.core.model.EvidenceKind
 import com.tdater.blackbox.core.model.RunOutcome
+import com.tdater.blackbox.core.readings.Readings
+import com.tdater.blackbox.core.templates.ProjectTemplates
+import com.tdater.blackbox.system.Dictation
+import com.tdater.blackbox.system.QuickCapture
+import com.tdater.blackbox.system.Vision
 import com.tdater.blackbox.ui.MainViewModel
 import com.tdater.blackbox.ui.RecordingTarget
 import com.tdater.blackbox.ui.components.BbTopBar
@@ -48,7 +55,9 @@ import com.tdater.blackbox.ui.components.Field
 import com.tdater.blackbox.ui.components.InfoCard
 import com.tdater.blackbox.ui.components.SectionHeader
 import com.tdater.blackbox.ui.components.shortId
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -56,7 +65,7 @@ import java.io.File
  * selected association are saved state, so a fold/rotate never loses typed text.
  */
 @Composable
-fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRunId: String?, back: () -> Unit) {
+fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRunId: String?, back: () -> Unit, mode: String? = null) {
     val bundle by rememberBundle(vm, pid)
     val ctx = LocalContext.current
     var iid by rememberSaveable { mutableStateOf(initialIid) }
@@ -67,6 +76,18 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
     var pendingPhoto by rememberSaveable { mutableStateOf<String?>(null) }
     var pickInv by rememberSaveable { mutableStateOf(false) }
     var micDenied by rememberSaveable { mutableStateOf(false) }
+    var autoDone by rememberSaveable { mutableStateOf(false) }
+    var scanNext by rememberSaveable { mutableStateOf(false) }
+    var listening by remember { mutableStateOf(false) }
+    var heard by remember { mutableStateOf("") }
+    val dictation = remember {
+        Dictation(ctx.applicationContext, onPartial = { heard = it }) { result, error ->
+            listening = false; heard = ""
+            if (result != null) text = if (text.isBlank()) result else text.trimEnd() + " " + result
+            if (error != null) vm.message = error
+        }
+    }
+    DisposableEffect(Unit) { onDispose { dictation.cancel() } }
     val b = bundle
 
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -88,14 +109,65 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
         pendingPhoto = null
         val f = File(path)
         if (!ok || !f.exists() || f.length() == 0L) { f.delete(); vm.message = "Photo cancelled; nothing saved."; return@rememberLauncherForActivityResult }
+        val scan = scanNext
+        scanNext = false
         vm.launch("Saving photo failed") {
-            vm.repo.addCapturedFile(f, pid, iid, runId, EvidenceKind.PHOTO, f.name, "image/jpeg", "Photo ${java.time.LocalTime.now().withNano(0)}")
-            vm.message = "Photo saved."
+            val label = if (scan) "Scan" else "Photo"
+            val eid = vm.repo.addCapturedFile(f, pid, iid, runId, EvidenceKind.PHOTO, f.name, "image/jpeg", "$label ${java.time.LocalTime.now().withNano(0)}")
+            if (!scan) { vm.message = "Photo saved."; return@launch }
+            val stored = vm.repo.loadBundle(pid)?.evidence?.firstOrNull { it.id == eid }?.attachmentPath?.let { vm.repo.attachments.file(it) }
+            val codes = stored?.let { sf -> withContext(Dispatchers.Default) { runCatching { Vision.scanCodes(ctx, sf) }.getOrDefault(emptyList()) } }.orEmpty()
+            if (codes.isEmpty()) vm.message = "Photo saved, but no barcode or QR code was found. Try closer, with the code flat and in focus."
+            else {
+                vm.repo.addDerivedText(eid, EvidenceKind.TEXT, "Code: ${codes.first().value.take(60)}", Vision.describe(codes), listOf("scanned code"))
+                vm.message = "Scanned: ${codes.first().value.take(80)}"
+            }
         }
     }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         micDenied = !granted
         if (granted) vm.startRecording(RecordingTarget(pid, iid, runId))
+    }
+
+    val dictMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) listening = dictation.start() else vm.message = "Microphone permission is needed for dictation."
+    }
+
+    fun dictate() {
+        if (listening) { dictation.stop(); return }
+        if (!Dictation.available(ctx)) { vm.message = "This phone has no offline speech recognition (needs Android 12+ with an on-device speech model). Use your keyboard's mic instead."; return }
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) listening = dictation.start()
+        else dictMic.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    fun launchCamera(scan: Boolean = false) {
+        scanNext = scan
+        val f = vm.repo.attachments.newCaptureFile(ctx.cacheDir, "jpg")
+        pendingPhoto = f.absolutePath
+        val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
+        try { takePhoto.launch(uri) } catch (e: ActivityNotFoundException) {
+            f.delete(); pendingPhoto = null; scanNext = false
+            vm.message = "No camera app is available. Import an existing image instead."
+        }
+    }
+
+    fun startVoice() {
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+            vm.startRecording(RecordingTarget(pid, iid, runId))
+        else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+    }
+
+    // Opened from the widget / tile / home quick actions: do the requested thing once.
+    LaunchedEffect(mode) {
+        if (mode != null && !autoDone) {
+            autoDone = true
+            when (mode) {
+                QuickCapture.PHOTO -> launchCamera()
+                QuickCapture.VOICE -> if (!vm.isRecording) startVoice()
+                QuickCapture.SCAN -> launchCamera(scan = true)
+                else -> Unit
+            }
+        }
     }
 
     Scaffold(topBar = { BbTopBar("Capture", b?.project?.title, onBack = back) }) { pad ->
@@ -111,6 +183,15 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
                 OutlinedButton(onClick = { pickInv = true }) { Text("Change") }
             }
 
+            val readingSuggestions = b?.let { bb ->
+                (Readings.collect(bb).map { it.name to (it.unit ?: "") } + ProjectTemplates.byId(bb.project.templateId).readings)
+                    .distinctBy { it.first.lowercase() }
+            }.orEmpty()
+            if (mode == QuickCapture.READING) {
+                SectionHeader("Reading")
+                LogReadingCard(vm, pid, iid, readingSuggestions, runId)
+            }
+
             // Voice
             SectionHeader("Voice note")
             val recording = vm.isRecording
@@ -124,27 +205,16 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
                     OutlinedButton(onClick = { vm.stopRecording(save = false) }, modifier = Modifier.heightIn(min = 56.dp)) { Text("Discard") }
                 }
             } else {
-                Button(onClick = {
-                    if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
-                        vm.startRecording(RecordingTarget(pid, iid, runId))
-                    else micPermission.launch(Manifest.permission.RECORD_AUDIO)
-                }, modifier = Modifier.heightIn(min = 56.dp)) { Text("● Record voice note") }
-                Text("Audio is stored as-is. Transcription is not available in this build.", style = MaterialTheme.typography.labelSmall)
+                Button(onClick = { startVoice() }, modifier = Modifier.heightIn(min = 56.dp)) { Text("● Record voice note") }
+                Text("Audio is stored as-is. To type by voice instead, use Dictate under Text.", style = MaterialTheme.typography.labelSmall)
                 if (micDenied) Text("Microphone permission was denied. Text, photo and file capture still work. To record, allow the microphone for BLACKBOX in Android Settings → Apps → BLACKBOX → Permissions.",
                     color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             SectionHeader("Photo or file")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = {
-                    val f = vm.repo.attachments.newCaptureFile(ctx.cacheDir, "jpg")
-                    pendingPhoto = f.absolutePath
-                    val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
-                    try { takePhoto.launch(uri) } catch (e: ActivityNotFoundException) {
-                        f.delete(); pendingPhoto = null
-                        vm.message = "No camera app is available. Import an existing image instead."
-                    }
-                }, modifier = Modifier.heightIn(min = 56.dp)) { Text("Take photo") }
+                Button(onClick = { launchCamera() }, modifier = Modifier.heightIn(min = 56.dp)) { Text("Take photo") }
+                OutlinedButton(onClick = { launchCamera(scan = true) }, modifier = Modifier.heightIn(min = 56.dp)) { Text("Scan barcode / QR") }
                 OutlinedButton(onClick = { importFile.launch(arrayOf("*/*")) }, modifier = Modifier.heightIn(min = 56.dp)) {
                     Text("Import screenshot / log / file")
                 }
@@ -165,6 +235,11 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
             }
             Field("Title (optional)", title, { title = it }, singleLine = true)
             Field(if (kind == EvidenceKind.MEASUREMENT) "Reading, with units (e.g. 12.4 V)" else "What did you see?", text, { text = it }, minLines = 4)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { dictate() }) { Text(if (listening) "■ Stop dictating" else "🎤 Dictate") }
+            }
+            if (listening) Text(heard.ifBlank { "Listening… (on this phone only)" }, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             Button(
                 enabled = text.isNotBlank() && !vm.busy,
                 onClick = {
@@ -178,6 +253,11 @@ fun CaptureScreen(vm: MainViewModel, pid: String, initialIid: String?, initialRu
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 colors = ButtonDefaults.buttonColors(),
             ) { Text("Save now") }
+
+            if (mode != QuickCapture.READING) {
+                SectionHeader("Reading (a number to track over time)")
+                LogReadingCard(vm, pid, iid, readingSuggestions, runId)
+            }
         }
     }
 

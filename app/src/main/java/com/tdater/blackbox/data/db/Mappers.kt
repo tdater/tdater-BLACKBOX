@@ -8,6 +8,7 @@ import com.tdater.blackbox.core.model.EnvironmentSnapshot
 import com.tdater.blackbox.core.model.Evidence
 import com.tdater.blackbox.core.model.HandoffDraft
 import com.tdater.blackbox.core.model.Investigation
+import com.tdater.blackbox.core.model.Procedure
 import com.tdater.blackbox.core.model.Project
 import com.tdater.blackbox.core.model.ResumeCapsule
 import com.tdater.blackbox.core.model.Session
@@ -15,11 +16,11 @@ import com.tdater.blackbox.core.model.TestPlan
 import com.tdater.blackbox.core.model.TestRun
 import com.tdater.blackbox.core.model.TimelineEvent
 
-fun ProjectEntity.toModel() = Project(id, title, description, category, status, createdAt, updatedAt, privacyPolicy, objective, labels, isSample)
-fun Project.toEntity() = ProjectEntity(id, title, description, category, status, createdAt, updatedAt, privacyPolicy, objective, labels, isSample)
+fun ProjectEntity.toModel() = Project(id, title, description, category, status, createdAt, updatedAt, privacyPolicy, objective, labels, isSample, templateId, fieldKeys)
+fun Project.toEntity() = ProjectEntity(id, title, description, category, status, createdAt, updatedAt, privacyPolicy, objective, labels, isSample, templateId, fieldKeys)
 
-fun InvestigationEntity.toModel() = Investigation(id, projectId, title, problemStatement, desiredOutcome, status, currentQuestion, nextAction, knownGoodReferenceId, createdAt, updatedAt, revision)
-fun Investigation.toEntity() = InvestigationEntity(id, projectId, title, problemStatement, desiredOutcome, status, currentQuestion, nextAction, knownGoodReferenceId, createdAt, updatedAt, revision)
+fun InvestigationEntity.toModel() = Investigation(id, projectId, title, problemStatement, desiredOutcome, status, currentQuestion, nextAction, knownGoodReferenceId, createdAt, updatedAt, revision, followUpAt, followUpNote)
+fun Investigation.toEntity() = InvestigationEntity(id, projectId, title, problemStatement, desiredOutcome, status, currentQuestion, nextAction, knownGoodReferenceId, createdAt, updatedAt, revision, followUpAt, followUpNote)
 
 fun SessionEntity.toModel() = Session(id, projectId, investigationId, title, notes, startedAt, endedAt, environmentSnapshotId, buildReferenceId)
 fun Session.toEntity() = SessionEntity(id, projectId, investigationId, title, notes, startedAt, endedAt, environmentSnapshotId, buildReferenceId)
@@ -73,3 +74,6 @@ fun HandoffEntity.toModel() = HandoffDraft(id, projectId, investigationId, sourc
     createdAt, format, content, privacyReview)
 fun HandoffDraft.toEntity() = HandoffEntity(id, projectId, investigationId, sourceRecordIds, includedEvidenceIds, excludedEvidenceIds,
     createdAt, format, content, privacyReview)
+
+fun ProcedureEntity.toModel() = Procedure(id, title, description, steps, expectedResult, templateId, sourceProjectId, sourcePlanId, createdAt, updatedAt)
+fun Procedure.toEntity() = ProcedureEntity(id, title, description, steps, expectedResult, templateId, sourceProjectId, sourcePlanId, createdAt, updatedAt)

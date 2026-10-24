@@ -11,6 +11,8 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
@@ -41,13 +43,16 @@ class SmokeFlowTest {
 
     @Test
     fun sampleWorkbenchSearchAndRegression() {
-        waitText(LOAD_SAMPLE)
+        waitText(WELCOME)
         shot("01-projects-empty")
         waitDesc("Guide and FAQ")
         rule.onNodeWithContentDescription("Guide and FAQ").performClick()
         waitText("Quick start (5 minutes)")
         shot("02-guide")
         back()
+        waitText(WELCOME)
+        // The sample button sits below the template grid, which is lazy: scroll it into composition first.
+        rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(LOAD_SAMPLE))
         waitText(LOAD_SAMPLE)
         rule.onNodeWithText(LOAD_SAMPLE).performClick()
 
@@ -70,13 +75,16 @@ class SmokeFlowTest {
         shot("06-search")
 
         back()
+        waitDesc("Search records")
+        rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(SAMPLE_PROJECT))
         waitText(SAMPLE_PROJECT)
         rule.onNodeWithText(SAMPLE_PROJECT).performClick()
         // The project menu only appears once the project bundle has loaded.
         waitDesc("Project actions")
         rule.onNodeWithContentDescription("Project actions").performClick()
-        waitText("Regression checklist")
-        rule.onNodeWithText("Regression checklist").performClick()
+        // Everyday wording is the default: "Regression checklist" reads as "Recheck list".
+        waitText("Recheck list")
+        rule.onNodeWithText("Recheck list").performClick()
         // SectionHeader renders upper case.
         waitText("Suggested from fixed failures", ignoreCase = true)
         rule.onNodeWithText("Add to checklist").performClick()
@@ -132,6 +140,7 @@ class SmokeFlowTest {
     private companion object {
         const val SHOTS = "/data/local/tmp/blackbox-shots"
         const val LOAD_SAMPLE = "Load labeled sample (synthetic data)"
+        const val WELCOME = "What are you working on?"
         const val SAMPLE_PROJECT = "[SAMPLE] OBD freeze after screen-off"
         const val INVESTIGATION = "OBD values freeze after screen-off"
     }
